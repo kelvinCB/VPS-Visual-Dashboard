@@ -69,6 +69,21 @@ test.describe('VPS Dashboard', () => {
         await expect(refreshBtn).toBeVisible();
     });
 
+    test('should toggle theme (dark/light) when theme toggle clicked', async ({ page }) => {
+        // Default theme should be set on <html>
+        const html = page.locator('html');
+        await expect(html).toHaveAttribute('data-theme', 'dark');
+
+        const themeToggle = page.locator('#theme-toggle');
+        await expect(themeToggle).toBeVisible();
+
+        await themeToggle.click();
+        await expect(html).toHaveAttribute('data-theme', 'light');
+
+        await themeToggle.click();
+        await expect(html).toHaveAttribute('data-theme', 'dark');
+    });
+
     test('should refresh data when refresh button clicked', async ({ page }) => {
         // Wait for initial load to complete
         await page.waitForTimeout(2000);

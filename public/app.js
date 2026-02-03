@@ -62,8 +62,61 @@ const elements = {
     // Controls
     refreshBtn: document.getElementById('refresh-btn'),
     statusBadge: document.getElementById('status-badge'),
-    lastUpdated: document.getElementById('last-updated')
+    lastUpdated: document.getElementById('last-updated'),
+
+    // Theme
+    themeToggle: document.getElementById('theme-toggle'),
+    themeLabel: document.getElementById('theme-label')
 };
+
+// ===== Theme & Utilities =====
+function getCssVar(name, fallback = '') {
+    const value = getComputedStyle(document.documentElement).getPropertyValue(name);
+    return (value && value.trim()) || fallback;
+}
+
+function applyTheme(theme) {
+    const normalized = theme === 'light' ? 'light' : 'dark';
+    document.documentElement.dataset.theme = normalized;
+
+    if (elements.themeLabel) {
+        elements.themeLabel.textContent = normalized === 'light' ? 'Light' : 'Dark';
+    }
+
+    if (elements.themeToggle) {
+        const next = normalized === 'light' ? 'dark' : 'light';
+        elements.themeToggle.setAttribute(
+            'aria-label',
+            `Switch to ${next} mode`
+        );
+    }
+
+    try {
+        localStorage.setItem('theme', normalized);
+    } catch {
+        // Ignore storage errors (private mode, etc.)
+    }
+}
+
+function initTheme() {
+    let theme = 'dark';
+
+    try {
+        const stored = localStorage.getItem('theme');
+        if (stored === 'light' || stored === 'dark') theme = stored;
+    } catch {
+        // Ignore storage errors
+    }
+
+    applyTheme(theme);
+
+    if (elements.themeToggle) {
+        elements.themeToggle.addEventListener('click', () => {
+            const current = document.documentElement.dataset.theme || 'dark';
+            applyTheme(current === 'light' ? 'dark' : 'light');
+        });
+    }
+}
 
 // ===== API Functions =====
 async function fetchMetrics() {
@@ -155,7 +208,7 @@ function drawCircularChart(canvas, percentage, color = '#7c3aed') {
     // Background circle
     ctx.beginPath();
     ctx.arc(centerX, centerY, radius, 0, Math.PI * 2);
-    ctx.strokeStyle = 'rgba(255, 255, 255, 0.1)';
+    ctx.strokeStyle = getCssVar('--chart-track', 'rgba(255, 255, 255, 0.1)');
     ctx.lineWidth = lineWidth;
     ctx.stroke();
 
@@ -390,6 +443,9 @@ function closeMemoryModal() {
 
 // ===== Initialization =====
 function init() {
+    // Theme
+    initTheme();
+
     // Initial data fetch
     refreshData();
 
