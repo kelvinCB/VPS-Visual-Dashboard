@@ -477,7 +477,16 @@ function init() {
 }
 
 // Start the application
-document.addEventListener('DOMContentLoaded', init);
+document.addEventListener('DOMContentLoaded', () => {
+    // Register service worker for PWA installability
+    if ('serviceWorker' in navigator) {
+        navigator.serviceWorker.register('/sw.js').catch(() => {
+            // Ignore SW registration failures
+        });
+    }
+
+    init();
+});
 
 // Export for testing
 if (typeof module !== 'undefined' && module.exports) {
