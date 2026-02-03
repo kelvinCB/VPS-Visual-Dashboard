@@ -93,3 +93,5 @@ npm run test:coverage # Generate coverage report
 ## License
 
 MIT
+
+<!-- deploy trigger: 2026-02-03T17:23:40Z -->
