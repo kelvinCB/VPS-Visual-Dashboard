@@ -1,0 +1,34 @@
+{
+    "name": "vps-visual-dashboard",
+    "version": "1.0.0",
+    "description": "Visual dashboard to monitor VPS metrics in real-time",
+    "main": "server.js",
+    "scripts": {
+        "start": "node server.js",
+        "dev": "node server.js",
+        "test": "vitest run",
+        "test:backend": "vitest run tests/backend",
+        "test:frontend": "vitest run tests/frontend",
+        "test:e2e": "playwright test",
+        "test:coverage": "vitest run --coverage"
+    },
+    "keywords": [
+        "vps",
+        "dashboard",
+        "monitoring",
+        "metrics"
+    ],
+    "author": "Kelvin Calcano",
+    "license": "MIT",
+    "dependencies": {
+        "cors": "^2.8.5",
+        "express": "^4.18.2",
+        "systeminformation": "^5.21.22"
+    },
+    "devDependencies": {
+        "@playwright/test": "^1.40.0",
+        "@vitest/coverage-v8": "^1.2.0",
+        "jsdom": "^23.0.1",
+        "vitest": "^1.2.0"
+    }
+}
