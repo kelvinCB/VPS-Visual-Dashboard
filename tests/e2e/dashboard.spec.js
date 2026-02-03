@@ -9,7 +9,7 @@ test.describe('VPS Dashboard', () => {
     });
 
     test('should load dashboard page', async ({ page }) => {
-        await expect(page).toHaveTitle('Kelvin BPSC Dashboard');
+        await expect(page).toHaveTitle('Kelvin VPS Dashboard');
     });
 
     test('should display header with logo', async ({ page }) => {
