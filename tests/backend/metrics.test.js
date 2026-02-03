@@ -32,9 +32,49 @@ vi.mock('systeminformation', () => ({
     })
 }));
 
-const { app, formatBytes, formatUptime } = await import('../../server.js');
+// Use a temp bandwidth store for tests
+process.env.BANDWIDTH_STORE_PATH = `/tmp/vps-dashboard-bandwidth-test-${Date.now()}.json`;
+
+const { app, formatBytes, formatUptime, monthKey, updateMonthlyBandwidth } = await import('../../server.js');
 
 describe('Server Utility Functions', () => {
+    describe('monthKey', () => {
+        it('should format YYYY-MM', () => {
+            const d = new Date('2026-02-03T00:00:00Z');
+            expect(monthKey(d)).toBe('2026-02');
+        });
+    });
+
+    describe('updateMonthlyBandwidth', () => {
+        it('should accumulate deltas within the same month and ignore counter resets', () => {
+            const now = new Date('2026-02-03T00:00:00Z');
+
+            // First call initializes store
+            const a = updateMonthlyBandwidth({ rxBytes: 1000, txBytes: 2000, now });
+            expect(a.month).toBe('2026-02');
+            expect(a.monthBytes).toBe(0);
+
+            // Increase total by 500
+            const b = updateMonthlyBandwidth({ rxBytes: 1200, txBytes: 2300, now });
+            expect(b.monthBytes).toBe(500);
+
+            // Simulate reboot/counter reset (total lower) => delta ignored
+            const c = updateMonthlyBandwidth({ rxBytes: 10, txBytes: 20, now });
+            expect(c.monthBytes).toBe(500);
+        });
+
+        it('should reset when month changes', () => {
+            const feb = new Date('2026-02-28T23:59:00Z');
+            updateMonthlyBandwidth({ rxBytes: 1000, txBytes: 0, now: feb });
+
+            const mar = new Date('2026-03-01T00:01:00Z');
+            const out = updateMonthlyBandwidth({ rxBytes: 2000, txBytes: 0, now: mar });
+            expect(out.month).toBe('2026-03');
+            expect(out.monthBytes).toBe(0);
+        });
+    });
+
+
     describe('formatBytes', () => {
         it('should format 0 bytes correctly', () => {
             expect(formatBytes(0)).toBe('0 Bytes');

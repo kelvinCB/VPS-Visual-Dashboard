@@ -173,9 +173,9 @@
       </article>
 
       <!-- Bandwidth Card -->
-      <article class="metric-card bandwidth-card" id="bandwidth-card">
+      <article class="metric-card bandwidth-card clickable" id="bandwidth-card" title="Click to set monthly bandwidth limit">
         <div class="metric-header">
-          <span class="metric-title">Total Bandwidth</span>
+          <span class="metric-title">Monthly Bandwidth</span>
           <svg class="metric-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
             <path d="M22 12h-4l-3 9L9 3l-3 9H2" />
           </svg>
@@ -188,6 +188,10 @@
               <span class="bandwidth-unit" id="bandwidth-unit">GB</span>
             </div>
           </div>
+          <div class="metric-detail">
+            <span id="bandwidth-detail">Month-to-date</span>
+          </div>
+          <span class="click-hint" id="bandwidth-hint">Click to set monthly limit</span>
         </div>
       </article>
     </main>
