@@ -70,11 +70,26 @@ test.describe('VPS Dashboard', () => {
     });
 
     test('should refresh data when refresh button clicked', async ({ page }) => {
+        // Wait for initial load to complete
+        await page.waitForTimeout(2000);
+
+        // Get current last-updated time
+        const lastUpdated = page.locator('#last-updated');
+        const timeBefore = await lastUpdated.textContent();
+
+        // Wait a second to ensure time will be different
+        await page.waitForTimeout(1100);
+
+        // Click refresh button
         const refreshBtn = page.locator('#refresh-btn');
         await refreshBtn.click();
 
-        // Button should show spinning animation briefly
-        await expect(refreshBtn).toHaveClass(/spinning/);
+        // Wait for refresh to complete
+        await page.waitForTimeout(500);
+
+        // Last updated time should have changed
+        const timeAfter = await lastUpdated.textContent();
+        expect(timeAfter).not.toBe(timeBefore);
     });
 
     test('should display VPS details section', async ({ page }) => {
