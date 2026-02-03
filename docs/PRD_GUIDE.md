@@ -69,7 +69,7 @@ VPS Visual Dashboard is a web-based monitoring tool that displays real-time syst
 - [ ] **User Authentication** - Login system
 - [ ] **API Keys** - Secure API access
 - [ ] **Rate Limiting** - Prevent abuse
-- [ ] **SSL/HTTPS** - Secure connections
+- [x] **SSL/HTTPS** - Secure connections (via kelvin-vps.site)
 - [ ] **Audit Logs** - Track access
 
 ### v1.6 - UI/UX Improvements
