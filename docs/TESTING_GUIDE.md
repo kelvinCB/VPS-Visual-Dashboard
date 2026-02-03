@@ -2,14 +2,27 @@
 
 Complete testing documentation for VPS Visual Dashboard.
 
+## Table of Contents
+
+- [Test Summary](#test-summary)
+- [Running Tests](#running-tests)
+- [E2E Headed Mode (Slow)](#e2e-headed-mode-slow)
+- [Test Categories](#test-categories)
+- [Test Configuration](#test-configuration)
+- [Writing New Tests](#writing-new-tests)
+- [Coverage Goals](#coverage-goals)
+- [CI/CD Integration](#cicd-integration)
+
+---
+
 ## Test Summary
 
 | Category | Tests | Framework |
 |----------|-------|-----------|
-| Backend Unit | 8 | Vitest |
-| Frontend Unit | 13 | Vitest + JSDOM |
+| Backend Unit | 11 | Vitest |
+| Frontend Unit | 18 | Vitest + JSDOM |
 | E2E | 15 | Playwright |
-| **Total** | **36** | - |
+| **Total** | **44** | - |
 
 ---
 
@@ -30,12 +43,12 @@ npm run test:backend
 npm run test:frontend
 ```
 
-### E2E Tests
+### E2E Tests (Headless)
 ```bash
 # Install Playwright browsers (first time)
 npx playwright install
 
-# Run E2E tests
+# Run E2E tests headless
 npm run test:e2e
 ```
 
@@ -45,6 +58,38 @@ npm run test:coverage
 ```
 
 Coverage report generated in `coverage/` directory.
+
+---
+
+## E2E Headed Mode (Slow)
+
+Run E2E tests **one by one** with visible browser and slow motion for human observation:
+
+```bash
+# Run all E2E tests headed with 1 second delay between actions
+npx playwright test --headed --workers=1 --timeout=60000
+
+# Run with slow motion (500ms delay between actions)
+npx playwright test --headed --workers=1 --slow-mo=500
+
+# Run a specific test file with slow motion
+npx playwright test tests/e2e/dashboard.spec.js --headed --workers=1 --slow-mo=500
+
+# Ultra slow mode for detailed observation (1 second delay)
+npx playwright test --headed --workers=1 --slow-mo=1000
+
+# Debug mode (pauses at each step)
+npx playwright test --debug
+```
+
+| Flag | Description |
+|------|-------------|
+| `--headed` | Show browser window |
+| `--workers=1` | Run tests one by one (sequential) |
+| `--slow-mo=500` | 500ms delay between each action |
+| `--slow-mo=1000` | 1 second delay (ultra slow) |
+| `--debug` | Interactive debug mode |
+| `--timeout=60000` | 60 second timeout per test |
 
 ---
 

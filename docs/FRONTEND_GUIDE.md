@@ -2,6 +2,18 @@
 
 Technical documentation for the VPS Dashboard frontend.
 
+## Table of Contents
+
+- [Structure](#structure)
+- [Technologies](#technologies)
+- [Design System](#design-system)
+- [Components](#components)
+- [JavaScript Architecture](#javascript-architecture)
+- [Responsive Breakpoints](#responsive-breakpoints)
+- [Browser Support](#browser-support)
+
+---
+
 ## Structure
 
 ```

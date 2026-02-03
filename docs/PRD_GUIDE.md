@@ -2,6 +2,16 @@
 
 ## Current Version: 1.0.0
 
+## Table of Contents
+
+- [Overview](#overview)
+- [Core Features (v1.0)](#core-features-v10)
+- [Future Ideas](#future-ideas)
+- [Technical Debt](#technical-debt)
+- [Non-Functional Requirements](#non-functional-requirements)
+
+---
+
 ### Overview
 
 VPS Visual Dashboard is a web-based monitoring tool that displays real-time system metrics for a VPS server.
@@ -61,6 +71,12 @@ VPS Visual Dashboard is a web-based monitoring tool that displays real-time syst
 - [ ] **Rate Limiting** - Prevent abuse
 - [ ] **SSL/HTTPS** - Secure connections
 - [ ] **Audit Logs** - Track access
+
+### v1.6 - UI/UX Improvements
+
+- [ ] **Dark Mode** - Toggleable dark/light mode
+- [ ] **Responsive Design** - Mobile-first layout
+- [ ] **Animation** - Give life with animations
 
 ### v2.0 - Advanced Features
 

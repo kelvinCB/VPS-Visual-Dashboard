@@ -2,6 +2,20 @@
 
 Technical documentation for the VPS Dashboard backend.
 
+## Table of Contents
+
+- [Overview](#overview)
+- [Structure](#structure)
+- [Dependencies](#dependencies)
+- [API Endpoints](#api-endpoints)
+- [Configuration](#configuration)
+- [Utility Functions](#utility-functions)
+- [Running the Server](#running-the-server)
+- [Error Handling](#error-handling)
+- [Security Considerations](#security-considerations)
+
+---
+
 ## Overview
 
 Node.js + Express server providing system metrics via REST API.
@@ -17,7 +31,7 @@ Node.js + Express server providing system metrics via REST API.
 ## Dependencies
 
 | Package | Purpose |
-|---------|---------|
+|---------|---------| 
 | `express` | Web server framework |
 | `cors` | Cross-origin requests |
 | `systeminformation` | System metrics collection |
