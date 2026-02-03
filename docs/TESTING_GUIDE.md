@@ -66,30 +66,21 @@ Coverage report generated in `coverage/` directory.
 Run E2E tests **one by one** with visible browser and slow motion for human observation:
 
 ```bash
-# Run all E2E tests headed with 1 second delay between actions
-npx playwright test --headed --workers=1 --timeout=60000
-
 # Run with slow motion (500ms delay between actions)
-npx playwright test --headed --workers=1 --slow-mo=500
+npm run test:e2e:slow
 
-# Run a specific test file with slow motion
-npx playwright test tests/e2e/dashboard.spec.js --headed --workers=1 --slow-mo=500
+# Run in debug mode (interactive, pauses at each step)
+npm run test:e2e:debug
 
-# Ultra slow mode for detailed observation (1 second delay)
-npx playwright test --headed --workers=1 --slow-mo=1000
-
-# Debug mode (pauses at each step)
-npx playwright test --debug
+# Custom slow motion speed (e.g., 1000ms = 1 second)
+SLOW_MO=1000 npx playwright test
 ```
 
-| Flag | Description |
-|------|-------------|
-| `--headed` | Show browser window |
-| `--workers=1` | Run tests one by one (sequential) |
-| `--slow-mo=500` | 500ms delay between each action |
-| `--slow-mo=1000` | 1 second delay (ultra slow) |
-| `--debug` | Interactive debug mode |
-| `--timeout=60000` | 60 second timeout per test |
+| Command | Description |
+|---------|-------------|
+| `npm run test:e2e:slow` | 500ms delay, headed, sequential |
+| `npm run test:e2e:debug` | Interactive debug mode |
+| `SLOW_MO=1000 npx playwright test` | Custom 1 second delay |
 
 ---
 

@@ -10,6 +10,8 @@
         "test:backend": "vitest run tests/backend",
         "test:frontend": "vitest run tests/frontend",
         "test:e2e": "playwright test",
+        "test:e2e:slow": "SLOW_MO=500 playwright test",
+        "test:e2e:debug": "PWDEBUG=1 playwright test",
         "test:coverage": "vitest run --coverage"
     },
     "keywords": [
