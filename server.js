@@ -138,15 +138,17 @@ app.get('/api/processes', async (req, res) => {
         const mem = await si.mem();
 
         // Sort by memory usage and take top 15
+        // Use mem (total virtual+rss) as memRss can be inaccurate on VPS
         const topProcesses = processes.list
-            .sort((a, b) => b.memRss - a.memRss)
+            .filter(proc => proc.mem > 0)
+            .sort((a, b) => b.mem - a.mem)
             .slice(0, 15)
             .map(proc => ({
                 name: proc.name,
                 pid: proc.pid,
-                memoryBytes: proc.memRss,
-                memoryFormatted: formatBytes(proc.memRss),
-                memoryPercent: Math.round((proc.memRss / mem.total) * 100 * 100) / 100,
+                memoryBytes: proc.memVsz || proc.mem,
+                memoryFormatted: formatBytes(proc.memVsz || 0),
+                memoryPercent: Math.round(proc.mem * 100) / 100,
                 cpu: Math.round(proc.cpu * 10) / 10,
                 command: proc.command ? proc.command.substring(0, 50) : proc.name
             }));
