@@ -19,10 +19,10 @@ Complete testing documentation for VPS Visual Dashboard.
 
 | Category | Tests | Framework |
 |----------|-------|-----------|
-| Backend Unit | 11 | Vitest |
+| Backend Unit | 14 | Vitest |
 | Frontend Unit | 18 | Vitest + JSDOM |
-| E2E | 15 | Playwright |
-| **Total** | **44** | - |
+| E2E | 17 | Playwright |
+| **Total** | **49** | - |
 
 ---
 
@@ -92,8 +92,8 @@ Location: `tests/backend/`
 
 | File | Tests | Description |
 |------|-------|-------------|
-| `metrics.test.js` | 5 | API metrics endpoint, formatBytes |
-| `system.test.js` | 3 | System info endpoint, formatUptime |
+| `metrics.test.js` | 14 | Utilities (formatBytes/formatUptime/monthly bandwidth) + API stubs |
+| `system.test.js` | 3 | System info endpoint |
 
 **What's tested:**
 - `formatBytes()` function with various inputs
@@ -106,8 +106,8 @@ Location: `tests/frontend/`
 
 | File | Tests | Description |
 |------|-------|-------------|
-| `app.test.js` | 6 | Configuration, formatTrafficValue |
-| `rendering.test.js` | 7 | DOM structure, initial state |
+| `app.test.js` | 10 | Configuration, formatting helpers |
+| `rendering.test.js` | 8 | DOM structure, initial state |
 
 **What's tested:**
 - Configuration constants (refresh intervals)
@@ -121,7 +121,7 @@ Location: `tests/e2e/`
 
 | File | Tests | Description |
 |------|-------|-------------|
-| `dashboard.spec.js` | 15 | Full user flows, API integration |
+| `dashboard.spec.js` | 17 | Full user flows, API integration |
 
 **What's tested:**
 - Page loads correctly
