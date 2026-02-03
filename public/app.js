@@ -325,6 +325,69 @@ async function refreshMetricsOnly() {
     }
 }
 
+// ===== Modal Functions =====
+const modalElements = {
+    overlay: document.getElementById('memory-modal'),
+    closeBtn: document.getElementById('modal-close'),
+    memoryCard: document.getElementById('memory-card'),
+    memTotal: document.getElementById('mem-total'),
+    memUsed: document.getElementById('mem-used'),
+    memFree: document.getElementById('mem-free'),
+    memAvailable: document.getElementById('mem-available'),
+    memBuffers: document.getElementById('mem-buffers'),
+    memCached: document.getElementById('mem-cached'),
+    memSwap: document.getElementById('mem-swap'),
+    processesTbody: document.getElementById('processes-tbody')
+};
+
+async function fetchProcesses() {
+    try {
+        const response = await fetch(`${CONFIG.API_BASE}/api/processes`);
+        if (!response.ok) throw new Error('Failed to fetch processes');
+        return await response.json();
+    } catch (error) {
+        console.error('Error fetching processes:', error);
+        throw error;
+    }
+}
+
+async function openMemoryModal() {
+    modalElements.overlay.classList.add('active');
+    modalElements.processesTbody.innerHTML = '<tr><td colspan="4">Loading...</td></tr>';
+
+    try {
+        const data = await fetchProcesses();
+
+        // Update breakdown
+        modalElements.memTotal.textContent = data.breakdown.total;
+        modalElements.memUsed.textContent = data.breakdown.used;
+        modalElements.memFree.textContent = data.breakdown.free;
+        modalElements.memAvailable.textContent = data.breakdown.available;
+        modalElements.memBuffers.textContent = data.breakdown.buffers;
+        modalElements.memCached.textContent = data.breakdown.cached;
+        modalElements.memSwap.textContent = data.breakdown.swapUsed;
+
+        // Update processes table
+        modalElements.processesTbody.innerHTML = data.processes
+            .map(proc => `
+                <tr>
+                    <td>${proc.name}</td>
+                    <td>${proc.pid}</td>
+                    <td>${proc.memoryFormatted}</td>
+                    <td>${proc.memoryPercent}%</td>
+                </tr>
+            `)
+            .join('');
+
+    } catch (error) {
+        modalElements.processesTbody.innerHTML = '<tr><td colspan="4">Error loading data</td></tr>';
+    }
+}
+
+function closeMemoryModal() {
+    modalElements.overlay.classList.remove('active');
+}
+
 // ===== Initialization =====
 function init() {
     // Initial data fetch
@@ -335,6 +398,24 @@ function init() {
 
     // Refresh button click handler
     elements.refreshBtn.addEventListener('click', refreshData);
+
+    // Memory card click handler (open modal)
+    modalElements.memoryCard.addEventListener('click', openMemoryModal);
+
+    // Modal close handlers
+    modalElements.closeBtn.addEventListener('click', closeMemoryModal);
+    modalElements.overlay.addEventListener('click', (e) => {
+        if (e.target === modalElements.overlay) {
+            closeMemoryModal();
+        }
+    });
+
+    // Close modal on Escape key
+    document.addEventListener('keydown', (e) => {
+        if (e.key === 'Escape' && modalElements.overlay.classList.contains('active')) {
+            closeMemoryModal();
+        }
+    });
 
     console.log('VPS Dashboard initialized');
 }

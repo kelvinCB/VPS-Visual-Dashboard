@@ -5,44 +5,46 @@
   --bg-secondary: #17171c;
   --bg-card: #1e1e26;
   --bg-card-hover: #252530;
-  
+
   --text-primary: #ffffff;
   --text-secondary: #a0a0b0;
   --text-muted: #6b6b7b;
-  
+
   --accent-primary: #7c3aed;
   --accent-secondary: #a855f7;
   --accent-gradient: linear-gradient(135deg, #7c3aed 0%, #a855f7 100%);
-  
+
   --success: #22c55e;
   --warning: #f59e0b;
   --error: #ef4444;
   --info: #3b82f6;
-  
+
   --chart-line-1: #7c3aed;
   --chart-line-2: #f97316;
   --chart-line-3: #22c55e;
   --chart-fill-1: rgba(124, 58, 237, 0.15);
   --chart-fill-2: rgba(249, 115, 22, 0.15);
   --chart-fill-3: rgba(34, 197, 94, 0.15);
-  
+
   --border-color: rgba(255, 255, 255, 0.08);
   --border-radius: 16px;
   --border-radius-sm: 8px;
-  
+
   --shadow-sm: 0 2px 8px rgba(0, 0, 0, 0.15);
   --shadow-md: 0 4px 16px rgba(0, 0, 0, 0.2);
   --shadow-lg: 0 8px 32px rgba(0, 0, 0, 0.3);
-  
+
   --transition-fast: 150ms ease;
   --transition-normal: 250ms ease;
   --transition-slow: 350ms ease;
-  
+
   --font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
 }
 
 /* ===== Reset & Base Styles ===== */
-*, *::before, *::after {
+*,
+*::before,
+*::after {
   box-sizing: border-box;
   margin: 0;
   padding: 0;
@@ -139,8 +141,17 @@ body {
 }
 
 @keyframes pulse {
-  0%, 100% { opacity: 1; transform: scale(1); }
-  50% { opacity: 0.5; transform: scale(1.2); }
+
+  0%,
+  100% {
+    opacity: 1;
+    transform: scale(1);
+  }
+
+  50% {
+    opacity: 0.5;
+    transform: scale(1.2);
+  }
 }
 
 .refresh-btn {
@@ -177,8 +188,13 @@ body {
 }
 
 @keyframes spin {
-  from { transform: rotate(0deg); }
-  to { transform: rotate(360deg); }
+  from {
+    transform: rotate(0deg);
+  }
+
+  to {
+    transform: rotate(360deg);
+  }
 }
 
 /* ===== System Info Bar ===== */
@@ -459,25 +475,25 @@ body {
     padding: 16px;
     gap: 16px;
   }
-  
+
   .header {
     flex-direction: column;
     gap: 16px;
     padding: 16px;
   }
-  
+
   .metrics-grid {
     grid-template-columns: 1fr;
   }
-  
+
   .system-info-bar {
     grid-template-columns: repeat(2, 1fr);
   }
-  
+
   .metric-value span:first-child {
     font-size: 2rem;
   }
-  
+
   .footer {
     flex-direction: column;
     gap: 8px;
@@ -489,7 +505,7 @@ body {
   .system-info-bar {
     grid-template-columns: 1fr;
   }
-  
+
   .logo-text {
     font-size: 1.25rem;
   }
@@ -513,4 +529,203 @@ body {
   padding: 12px 16px;
   color: var(--error);
   font-size: 0.875rem;
+}
+
+/* ===== Clickable Card ===== */
+.metric-card.clickable {
+  cursor: pointer;
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+  position: relative;
+}
+
+.metric-card.clickable:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 8px 30px rgba(124, 58, 237, 0.2);
+  border-color: var(--accent-primary);
+}
+
+.click-hint {
+  position: absolute;
+  bottom: 8px;
+  right: 12px;
+  font-size: 0.7rem;
+  color: var(--text-muted);
+  opacity: 0;
+  transition: opacity 0.2s ease;
+}
+
+.metric-card.clickable:hover .click-hint {
+  opacity: 1;
+}
+
+/* ===== Modal Overlay ===== */
+.modal-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: rgba(0, 0, 0, 0.8);
+  backdrop-filter: blur(4px);
+  display: none;
+  justify-content: center;
+  align-items: center;
+  z-index: 1000;
+  padding: 20px;
+}
+
+.modal-overlay.active {
+  display: flex;
+}
+
+/* ===== Modal ===== */
+.modal {
+  background: var(--bg-card);
+  border-radius: var(--border-radius);
+  border: 1px solid var(--border-color);
+  width: 100%;
+  max-width: 700px;
+  max-height: 80vh;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.5);
+}
+
+.modal-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 20px 24px;
+  border-bottom: 1px solid var(--border-color);
+}
+
+.modal-title {
+  font-size: 1.25rem;
+  font-weight: 600;
+  color: var(--text-primary);
+  margin: 0;
+}
+
+.modal-close {
+  background: none;
+  border: none;
+  font-size: 1.75rem;
+  color: var(--text-muted);
+  cursor: pointer;
+  line-height: 1;
+  padding: 0;
+  transition: color 0.2s ease;
+}
+
+.modal-close:hover {
+  color: var(--text-primary);
+}
+
+.modal-body {
+  padding: 24px;
+  overflow-y: auto;
+}
+
+/* ===== Memory Breakdown ===== */
+.memory-breakdown h3,
+.processes-section h3 {
+  font-size: 0.875rem;
+  font-weight: 600;
+  color: var(--text-secondary);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  margin: 0 0 16px 0;
+}
+
+.breakdown-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+  gap: 12px;
+  margin-bottom: 24px;
+}
+
+.breakdown-item {
+  background: var(--bg-secondary);
+  border-radius: var(--border-radius-sm);
+  padding: 12px 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.breakdown-label {
+  font-size: 0.75rem;
+  color: var(--text-muted);
+  text-transform: uppercase;
+}
+
+.breakdown-value {
+  font-size: 1rem;
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+/* ===== Processes Table ===== */
+.processes-table-container {
+  overflow-x: auto;
+}
+
+.processes-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.875rem;
+}
+
+.processes-table th,
+.processes-table td {
+  padding: 10px 12px;
+  text-align: left;
+  border-bottom: 1px solid var(--border-color);
+}
+
+.processes-table th {
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+  background: var(--bg-secondary);
+}
+
+.processes-table td {
+  color: var(--text-primary);
+}
+
+.processes-table tr:hover td {
+  background: rgba(124, 58, 237, 0.05);
+}
+
+.processes-table td:nth-child(2),
+.processes-table td:nth-child(4) {
+  color: var(--text-secondary);
+  font-family: monospace;
+}
+
+.processes-table td:nth-child(3) {
+  font-weight: 500;
+}
+
+@media (max-width: 600px) {
+  .modal {
+    max-height: 90vh;
+  }
+
+  .breakdown-grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+
+  .processes-table {
+    font-size: 0.8rem;
+  }
+
+  .processes-table th,
+  .processes-table td {
+    padding: 8px;
+  }
 }

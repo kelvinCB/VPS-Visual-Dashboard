@@ -131,6 +131,58 @@ app.get('/api/system', async (req, res) => {
     }
 });
 
+// API: Get top processes by memory usage
+app.get('/api/processes', async (req, res) => {
+    try {
+        const processes = await si.processes();
+        const mem = await si.mem();
+
+        // Sort by memory usage and take top 15
+        const topProcesses = processes.list
+            .sort((a, b) => b.memRss - a.memRss)
+            .slice(0, 15)
+            .map(proc => ({
+                name: proc.name,
+                pid: proc.pid,
+                memoryBytes: proc.memRss,
+                memoryFormatted: formatBytes(proc.memRss),
+                memoryPercent: Math.round((proc.memRss / mem.total) * 100 * 100) / 100,
+                cpu: Math.round(proc.cpu * 10) / 10,
+                command: proc.command ? proc.command.substring(0, 50) : proc.name
+            }));
+
+        // Memory breakdown categories
+        const memoryBreakdown = {
+            total: formatBytes(mem.total),
+            totalBytes: mem.total,
+            used: formatBytes(mem.used),
+            usedBytes: mem.used,
+            free: formatBytes(mem.free),
+            freeBytes: mem.free,
+            active: formatBytes(mem.active),
+            activeBytes: mem.active,
+            available: formatBytes(mem.available),
+            availableBytes: mem.available,
+            buffers: formatBytes(mem.buffers || 0),
+            buffersBytes: mem.buffers || 0,
+            cached: formatBytes(mem.cached || 0),
+            cachedBytes: mem.cached || 0,
+            swapTotal: formatBytes(mem.swaptotal || 0),
+            swapUsed: formatBytes(mem.swapused || 0),
+            swapFree: formatBytes(mem.swapfree || 0)
+        };
+
+        res.json({
+            breakdown: memoryBreakdown,
+            processes: topProcesses,
+            timestamp: new Date().toISOString()
+        });
+    } catch (error) {
+        console.error('Error getting processes:', error);
+        res.status(500).json({ error: 'Failed to get process information' });
+    }
+});
+
 // Health check endpoint
 app.get('/api/health', (req, res) => {
     res.json({ status: 'ok', timestamp: new Date().toISOString() });
