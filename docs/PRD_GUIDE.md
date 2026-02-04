@@ -74,7 +74,7 @@ VPS Visual Dashboard is a web-based monitoring tool that displays real-time syst
 
 ### v1.6 - UI/UX Improvements
 
-- [ ] **Dark Mode** - Toggleable dark/light mode
+- [x] **Dark Mode** - Toggleable dark/light mode
 - [ ] **Responsive Design** - Mobile-first layout
 - [ ] **Animation** - Give life with animations
 
