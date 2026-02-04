@@ -325,16 +325,44 @@ app.post('/api/processes/:pid/kill', async (req, res) => {
 });
 
 // API: Start Minecraft Server
+// Helper to verify if Minecraft started (screen session exists)
+const verifyMinecraftStarted = () => {
+    return new Promise((resolve) => {
+        // Give it a moment to initialize
+        setTimeout(() => {
+            cp.exec('screen -ls | grep minecraft', (err, stdout) => {
+                // If grep finds it, exit code is 0 (err is null). If not found, code 1.
+                if (!err && stdout.trim().length > 0) {
+                    resolve(true);
+                } else {
+                    resolve(false);
+                }
+            });
+        }, 2000); // Wait 2s for screen to register/fail
+    });
+};
+
 app.post('/api/services/minecraft/start', async (req, res) => {
-    const startCommand = process.env.MC_START_COMMAND || 'echo "MC_START_COMMAND not configured" >> /tmp/mc_start_log.txt';
+    const command = process.env.MC_START_COMMAND;
+
+    if (!command) {
+        return res.status(500).json({ error: 'MC_START_COMMAND not configured' });
+    }
 
     try {
-        console.log(`Starting Minecraft with command: ${startCommand}`);
-        await runCommandDetached(startCommand);
-        res.json({ success: true, message: 'Minecraft start command executed' });
-    } catch (error) {
-        console.error('Error starting Minecraft:', error);
-        res.status(500).json({ error: 'Failed to start Minecraft' });
+        await runCommandDetached(command);
+
+        // Additional verification: Check if screen session 'minecraft' exists
+        const isRunning = await verifyMinecraftStarted();
+
+        if (isRunning) {
+            res.json({ success: true, message: 'Minecraft server started' });
+        } else {
+            res.status(500).json({ error: 'Start command executed, but server process (screen session) was not found after 2s. Check server logs.' });
+        }
+    } catch (err) {
+        console.error(err);
+        res.status(500).json({ error: err.message });
     }
 });
 

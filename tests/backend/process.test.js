@@ -30,7 +30,13 @@ describe('Process Control Endpoints', () => {
             };
         });
 
-        vi.spyOn(cp, 'exec').mockImplementation((cmd, cb) => cb(null, 'stdout', 'stderr'));
+        vi.spyOn(cp, 'exec').mockImplementation((cmd, cb) => {
+            if (cmd.includes('screen -ls')) {
+                cb(null, '1234.minecraft\t(Detached)', '');
+            } else {
+                cb(null, 'stdout', 'stderr');
+            }
+        });
 
         vi.spyOn(process, 'kill').mockImplementation(() => true);
     });
@@ -58,14 +64,14 @@ describe('Process Control Endpoints', () => {
     });
 
     it('POST /api/services/minecraft/start should execute start command', async () => {
-        // This test will take ~500ms due to startup check
+        // This test will take ~2500ms (500ms startup + 2000ms verification)
         process.env.MC_START_COMMAND = 'echo "start mc"';
 
         const res = await request(app).post('/api/services/minecraft/start');
 
         expect(res.status).toBe(200);
-        // expect(cp.spawn).toHaveBeenCalled(); // FIXME: Spy artifact
-    }, 5000); // 5s timeout
+        expect(cp.exec).toHaveBeenCalledWith(expect.stringContaining('screen -ls'), expect.any(Function));
+    }, 6000); // 6s timeout
 
     it('POST /api/services/minecraft/restart should sequence kill and start', async () => {
         // This test will take ~2.5s (2s kill delay + 500ms start check)
