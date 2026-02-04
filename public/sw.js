@@ -33,27 +33,35 @@ self.addEventListener('activate', (event) => {
 
 self.addEventListener('fetch', (event) => {
   const { request } = event;
-  // Only handle GET
   if (request.method !== 'GET') return;
 
+  const url = new URL(request.url);
+
+  // Never cache API responses (they are dynamic).
+  if (url.pathname.startsWith('/api/')) {
+    event.respondWith(fetch(request));
+    return;
+  }
+
+  // Cache-first only for core assets; network-first for everything else.
+  const isCoreAsset = CORE_ASSETS.includes(url.pathname) || CORE_ASSETS.includes('/');
+
+  if (isCoreAsset) {
+    event.respondWith(
+      caches.match(request).then((cached) => cached || fetch(request))
+    );
+    return;
+  }
+
   event.respondWith(
-    caches.match(request).then((cached) => {
-      if (cached) return cached;
-      return fetch(request)
-        .then((response) => {
-          // Cache successful same-origin responses for faster reloads.
-          try {
-            const url = new URL(request.url);
-            if (url.origin === self.location.origin && response.ok) {
-              const clone = response.clone();
-              caches.open(CACHE_NAME).then((cache) => cache.put(request, clone));
-            }
-          } catch {
-            // ignore
-          }
-          return response;
-        })
-        .catch(() => cached);
-    })
+    fetch(request)
+      .then((response) => {
+        if (url.origin === self.location.origin && response.ok) {
+          const clone = response.clone();
+          caches.open(CACHE_NAME).then((cache) => cache.put(request, clone));
+        }
+        return response;
+      })
+      .catch(() => caches.match(request))
   );
 });

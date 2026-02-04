@@ -1,19 +1,22 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <svg width="512" height="512" viewBox="0 0 512 512" fill="none" xmlns="http://www.w3.org/2000/svg">
-  <!-- Maskable icons should have safe padding. We keep the main mark inside a centered safe area. -->
+  <!-- Maskable icon (no text). Keep mark inside safe zone. Non-purple. -->
   <defs>
     <linearGradient id="g" x1="96" y1="96" x2="416" y2="416" gradientUnits="userSpaceOnUse">
-      <stop stop-color="#7c3aed"/>
-      <stop offset="1" stop-color="#a855f7"/>
+      <stop stop-color="#06B6D4"/>
+      <stop offset="1" stop-color="#2563EB"/>
     </linearGradient>
   </defs>
 
-  <rect width="512" height="512" fill="#0f0f13"/>
+  <!-- Full-bleed background for maskable -->
+  <rect width="512" height="512" fill="#0B1220"/>
 
-  <rect x="96" y="96" width="320" height="320" rx="80" fill="url(#g)" opacity="0.16"/>
-  <rect x="136" y="136" width="240" height="240" rx="56" stroke="url(#g)" stroke-width="18"/>
-  <circle cx="256" cy="256" r="64" fill="url(#g)"/>
-  <path d="M176 322c24 20 52 30 80 30s56-10 80-30" stroke="url(#g)" stroke-width="18" stroke-linecap="round"/>
+  <!-- Safe area icon (centered) -->
+  <rect x="96" y="96" width="320" height="320" rx="92" stroke="url(#g)" stroke-width="20"/>
+  <circle cx="256" cy="256" r="60" fill="url(#g)"/>
+  <path d="M176 330c24 20 52 30 80 30s56-10 80-30" stroke="url(#g)" stroke-width="20" stroke-linecap="round"/>
 
-  <text x="256" y="430" text-anchor="middle" font-family="Inter, system-ui, -apple-system, Segoe UI, Roboto" font-size="44" font-weight="700" fill="#ffffff" opacity="0.92">BPSC</text>
+  <path d="M256 168v30" stroke="url(#g)" stroke-width="18" stroke-linecap="round"/>
+  <path d="M168 256h30" stroke="url(#g)" stroke-width="18" stroke-linecap="round"/>
+  <path d="M314 256h30" stroke="url(#g)" stroke-width="18" stroke-linecap="round"/>
 </svg>

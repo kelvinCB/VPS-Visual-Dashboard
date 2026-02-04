@@ -15,7 +15,7 @@ test.describe('VPS Dashboard', () => {
     test('should display header with logo', async ({ page }) => {
         const logo = page.locator('.logo-text');
         await expect(logo).toBeVisible();
-        await expect(logo).toContainText('Kelvin BPSC');
+        await expect(logo).toContainText('Kelvin VPS');
     });
 
     test('should show running status badge', async ({ page }) => {

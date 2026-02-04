@@ -1,12 +1,12 @@
 {
-  "name": "Kelvin BPSC",
-  "short_name": "Kelvin BPSC",
-  "description": "Kelvin BPSC Dashboard - Visual dashboard to monitor VPS metrics in real-time",
+  "name": "Kelvin VPS",
+  "short_name": "Kelvin VPS",
+  "description": "Kelvin VPS Dashboard - Visual dashboard to monitor VPS metrics in real-time",
   "start_url": "/",
   "scope": "/",
   "display": "standalone",
-  "background_color": "#0f0f13",
-  "theme_color": "#7c3aed",
+  "background_color": "#0B1220",
+  "theme_color": "#2563EB",
   "icons": [
     {
       "src": "/icons/icon.svg",
