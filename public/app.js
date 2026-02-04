@@ -50,6 +50,8 @@ const elements = {
     trafficOutUnit: document.getElementById('traffic-out-unit'),
     bandwidthValue: document.getElementById('bandwidth-value'),
     bandwidthUnit: document.getElementById('bandwidth-unit'),
+    bandwidthDetail: document.getElementById('bandwidth-detail'),
+    bandwidthHint: document.getElementById('bandwidth-hint'),
 
     // Charts
     cpuChart: document.getElementById('cpu-chart'),
@@ -282,15 +284,36 @@ function updateMetricsUI(metrics) {
     drawLineChart(elements.trafficInChart, state.trafficInHistory, CONFIG.CHART_COLORS.trafficIn, maxTrafficIn);
     drawLineChart(elements.trafficOutChart, state.trafficOutHistory, CONFIG.CHART_COLORS.trafficOut, maxTrafficOut);
 
-    // Bandwidth (total)
-    const totalBandwidth = metrics.network.rxBytes + metrics.network.txBytes;
-    const { value: bwValue, unit: bwUnit } = formatTrafficValue(totalBandwidth);
+    // Bandwidth (monthly, persisted server-side)
+    const monthBytes = metrics.network.monthBytes ?? (metrics.network.rxBytes + metrics.network.txBytes);
+    const { value: bwValue, unit: bwUnit } = formatTrafficValue(monthBytes);
     elements.bandwidthValue.textContent = bwValue;
     elements.bandwidthUnit.textContent = bwUnit;
 
-    // Bandwidth chart (arbitrary percentage for visual)
-    const bandwidthPercentage = Math.min((totalBandwidth / (1024 * 1024 * 1024 * 10)) * 100, 100);
-    drawCircularChart(elements.bandwidthChart, bandwidthPercentage);
+    if (elements.bandwidthDetail) {
+        elements.bandwidthDetail.textContent = metrics.network.month
+            ? `Month-to-date (${metrics.network.month})`
+            : 'Month-to-date';
+    }
+
+    // Monthly bandwidth cap (client-side configurable)
+    let capGb = null;
+    try {
+        const stored = localStorage.getItem('monthlyBandwidthCapGb');
+        if (stored) capGb = Number(stored);
+        if (capGb && capGb > 0) {
+            const capBytes = capGb * 1024 * 1024 * 1024;
+            const pct = Math.min((monthBytes / capBytes) * 100, 100);
+            drawCircularChart(elements.bandwidthChart, pct);
+            if (elements.bandwidthHint) elements.bandwidthHint.textContent = `${Math.round(pct)}% of ${capGb}GB limit`;
+        } else {
+            // Unknown cap → show neutral ring
+            drawCircularChart(elements.bandwidthChart, 0);
+            if (elements.bandwidthHint) elements.bandwidthHint.textContent = 'Click to set monthly limit';
+        }
+    } catch {
+        drawCircularChart(elements.bandwidthChart, 0);
+    }
 
     // Update cores info
     if (metrics.cpu.cores) {
@@ -457,6 +480,38 @@ function init() {
 
     // Memory card click handler (open modal)
     modalElements.memoryCard.addEventListener('click', openMemoryModal);
+
+    // Bandwidth card click handler (set monthly cap)
+    const bandwidthCard = document.getElementById('bandwidth-card');
+    if (bandwidthCard) {
+        bandwidthCard.addEventListener('click', () => {
+            const current = (() => {
+                try { return localStorage.getItem('monthlyBandwidthCapGb') || ''; } catch { return ''; }
+            })();
+
+            const input = prompt('Set monthly bandwidth limit (GB). Leave empty to clear.', current);
+            if (input === null) return;
+
+            const trimmed = String(input).trim();
+            try {
+                if (!trimmed) {
+                    localStorage.removeItem('monthlyBandwidthCapGb');
+                } else {
+                    const value = Number(trimmed);
+                    if (!Number.isFinite(value) || value <= 0) {
+                        alert('Please enter a valid positive number (GB).');
+                        return;
+                    }
+                    localStorage.setItem('monthlyBandwidthCapGb', String(value));
+                }
+            } catch {
+                // ignore
+            }
+
+            // Refresh UI immediately
+            refreshMetricsOnly();
+        });
+    }
 
     // Modal close handlers
     modalElements.closeBtn.addEventListener('click', closeMemoryModal);
