@@ -35,7 +35,8 @@ VPS Visual Dashboard is a web-based monitoring tool that displays real-time syst
 
 ### v1.1 - Enhanced Metrics
 
-- [ ] **Process List** - Top processes by CPU/memory
+- [x] **Process List** - Top processes by CPU/memory
+- [x] **Process Control** - Stop/Restart/Start (specifically for Minecraft)
 - [ ] **Temperature Monitoring** - CPU/GPU temps
 - [ ] **Load Average** - 1, 5, 15 minute averages
 - [ ] **Swap Usage** - Separate swap monitoring
