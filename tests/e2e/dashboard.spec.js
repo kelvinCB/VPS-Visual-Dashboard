@@ -9,13 +9,13 @@ test.describe('VPS Dashboard', () => {
     });
 
     test('should load dashboard page', async ({ page }) => {
-        await expect(page).toHaveTitle('VPS Dashboard');
+        await expect(page).toHaveTitle('Kelvin VPS Dashboard');
     });
 
     test('should display header with logo', async ({ page }) => {
         const logo = page.locator('.logo-text');
         await expect(logo).toBeVisible();
-        await expect(logo).toContainText('VPS Dashboard');
+        await expect(logo).toContainText('Kelvin VPS');
     });
 
     test('should show running status badge', async ({ page }) => {
