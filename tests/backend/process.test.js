@@ -31,9 +31,10 @@ describe('Process Control Endpoints', () => {
 
     it('GET /api/processes should return process list and identify minecraft running', async () => {
         const res = await request(app).get('/api/processes');
-        expect(res.status).toBe(200);
+        expect(res.statusCode).toBe(200);
         expect(res.body.processes).toHaveLength(2);
         expect(res.body.isMinecraftRunning).toBe(true);
+        expect(res.body.minecraftPid).toBe(123);
     });
 
     it('POST /api/processes/:pid/kill should try to kill process', async () => {

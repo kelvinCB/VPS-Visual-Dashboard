@@ -450,10 +450,19 @@ async function openMemoryModal() {
                 let actions = '';
 
                 if (isHighMem) {
-                    actions = `
-                        <button class="btn-action btn-restart" onclick="restartProcess(${proc.pid}, '${proc.name}')" title="Restart">🔄</button>
-                        <button class="btn-action btn-kill" onclick="killProcess(${proc.pid}, '${proc.name}')" title="Kill">💀</button>
-                    `;
+                    const isMinecraft = data.minecraftPid && proc.pid === data.minecraftPid;
+
+                    if (isMinecraft) {
+                        actions = `
+                            <button class="btn-action btn-restart" onclick="restartProcess(${proc.pid})" title="Restart Minecraft Server">🔄</button>
+                            <button class="btn-action btn-kill" onclick="killProcess(${proc.pid}, '${proc.name}')" title="Kill">💀</button>
+                        `;
+                    } else {
+                        // Regular high mem process -> Kill only
+                        actions = `
+                            <button class="btn-action btn-kill" onclick="killProcess(${proc.pid}, '${proc.name}')" title="Kill">💀</button>
+                        `;
+                    }
                 }
 
                 return `
@@ -512,24 +521,20 @@ window.killProcess = async function (pid, name) {
     }
 };
 
-window.restartProcess = async function (pid, name) {
-    if (name.includes('java') || name.includes('minecraft')) {
-        if (!confirm(`Restart Minecraft Server? This will kill the process and attempt to start it again.`)) return;
+window.restartProcess = async function (pid) {
+    if (!confirm(`Restart Minecraft Server (PID: ${pid})? This will kill the process and attempt to start it again.`)) return;
 
-        try {
-            const res = await fetch(`${CONFIG.API_BASE}/api/services/minecraft/restart`, { method: 'POST' });
-            const data = await res.json();
-            if (data.success) {
-                alert('Minecraft is restarting...');
-                openMemoryModal(); // Refresh
-            } else {
-                alert('Failed: ' + data.error);
-            }
-        } catch (error) {
-            alert('Error: ' + error.message);
+    try {
+        const res = await fetch(`${CONFIG.API_BASE}/api/services/minecraft/restart`, { method: 'POST' });
+        const data = await res.json();
+        if (data.success) {
+            alert('Minecraft is restarting...');
+            openMemoryModal(); // Refresh
+        } else {
+            alert('Failed: ' + data.error);
         }
-    } else {
-        alert('Restart logic is only implemented for Minecraft/Java processes currently.');
+    } catch (error) {
+        alert('Error: ' + error.message);
     }
 };
 

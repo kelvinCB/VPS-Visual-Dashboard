@@ -13,6 +13,7 @@ test.describe('Process Control Features', () => {
                     { pid: 102, name: 'node', command: 'node server.js', memoryPercent: 5, memoryFormatted: '200 MB' }
                 ],
                 isMinecraftRunning: true,
+                minecraftPid: 101, // Mock matches java-mc PID
                 timestamp: new Date().toISOString()
             };
             await route.fulfill({ json });
@@ -60,30 +61,30 @@ test.describe('Process Control Features', () => {
         // Click kill
         await row.locator('.btn-kill').click();
     });
+});
 
-    test('should show Start Minecraft button when not running', async ({ page }) => {
-        // Mock the processes API response (MC OFF)
-        await page.route('/api/processes', async route => {
-            const json = {
-                breakdown: { used: '1 GB', total: '4 GB' },
-                processes: [],
-                isMinecraftRunning: false,
-                timestamp: new Date().toISOString()
-            };
-            await route.fulfill({ json });
-        });
-
-        await page.route('/api/services/minecraft/start', async route => {
-            await route.fulfill({ json: { success: true } });
-        });
-
-        await page.goto('/');
-        await page.click('#memory-card');
-
-        // Check if Start Minecraft button is visible in modal
-        await expect(page.locator('#btn-start-mc')).toBeVisible();
-
-        await page.click('#btn-start-mc');
-        // Verify success message or UI update (not implemented yet in verification, but checking button existence is key)
+test('should show Start Minecraft button when not running', async ({ page }) => {
+    // Mock the processes API response (MC OFF)
+    await page.route('/api/processes', async route => {
+        const json = {
+            breakdown: { used: '1 GB', total: '4 GB' },
+            processes: [],
+            isMinecraftRunning: false,
+            timestamp: new Date().toISOString()
+        };
+        await route.fulfill({ json });
     });
+
+    await page.route('/api/services/minecraft/start', async route => {
+        await route.fulfill({ json: { success: true } });
+    });
+
+    await page.goto('/');
+    await page.click('#memory-card');
+
+    // Check if Start Minecraft button is visible in modal
+    await expect(page.locator('#btn-start-mc')).toBeVisible();
+
+    await page.click('#btn-start-mc');
+    // Verify success message or UI update (not implemented yet in verification, but checking button existence is key)
 });
