@@ -3,6 +3,7 @@ const cors = require('cors');
 const path = require('path');
 const os = require('os');
 const si = require('systeminformation');
+const fs = require('fs');
 
 const app = express();
 const PORT = process.env.PORT || 7847;
@@ -25,6 +26,71 @@ function formatBytes(bytes, decimals = 2) {
     const sizes = ['Bytes', 'KB', 'MB', 'GB', 'TB'];
     const i = Math.floor(Math.log(bytes) / Math.log(k));
     return parseFloat((bytes / Math.pow(k, i)).toFixed(dm)) + ' ' + sizes[i];
+}
+
+// ===== Bandwidth Tracking (monthly)
+// systeminformation networkStats() counters are typically since boot.
+// We persist deltas to a small JSON file so we can approximate month-to-date usage.
+const BANDWIDTH_STORE_PATH = process.env.BANDWIDTH_STORE_PATH || path.join(__dirname, 'data', 'bandwidth.json');
+
+function monthKey(date = new Date()) {
+    // Use UTC to avoid timezone edge-cases around month boundaries
+    const y = date.getUTCFullYear();
+    const m = String(date.getUTCMonth() + 1).padStart(2, '0');
+    return `${y}-${m}`;
+}
+
+function loadBandwidthStore() {
+    try {
+        if (!fs.existsSync(BANDWIDTH_STORE_PATH)) return null;
+        const raw = fs.readFileSync(BANDWIDTH_STORE_PATH, 'utf8');
+        return JSON.parse(raw);
+    } catch {
+        return null;
+    }
+}
+
+function saveBandwidthStore(store) {
+    try {
+        fs.mkdirSync(path.dirname(BANDWIDTH_STORE_PATH), { recursive: true });
+        fs.writeFileSync(BANDWIDTH_STORE_PATH, JSON.stringify(store, null, 2));
+    } catch {
+        // ignore write failures
+    }
+}
+
+function updateMonthlyBandwidth({ rxBytes = 0, txBytes = 0, now = new Date() }) {
+    const currentTotal = Math.max(0, Number(rxBytes) + Number(txBytes));
+    const key = monthKey(now);
+
+    const store = loadBandwidthStore() || {
+        month: key,
+        monthBytes: 0,
+        lastTotal: currentTotal,
+        lastUpdated: now.toISOString()
+    };
+
+    // Reset monthly total if month changed
+    if (store.month !== key) {
+        store.month = key;
+        store.monthBytes = 0;
+        store.lastTotal = currentTotal;
+        store.lastUpdated = now.toISOString();
+        saveBandwidthStore(store);
+        return { month: store.month, monthBytes: store.monthBytes };
+    }
+
+    // Delta since last sample (guards for reboot/counter reset)
+    const lastTotal = Math.max(0, Number(store.lastTotal || 0));
+    const delta = currentTotal >= lastTotal ? (currentTotal - lastTotal) : 0;
+
+    store.monthBytes = Math.max(0, Number(store.monthBytes || 0) + delta);
+    store.lastTotal = currentTotal;
+    store.lastUpdated = now.toISOString();
+
+    saveBandwidthStore(store);
+
+    return { month: store.month, monthBytes: store.monthBytes };
 }
 
 // Helper function to format uptime
@@ -62,6 +128,12 @@ app.get('/api/metrics', async (req, res) => {
         // Calculate network stats (primary interface)
         const primaryNetwork = network[0] || {};
 
+        const monthly = updateMonthlyBandwidth({
+            rxBytes: primaryNetwork.rx_bytes || 0,
+            txBytes: primaryNetwork.tx_bytes || 0,
+            now: new Date()
+        });
+
         const metrics = {
             cpu: {
                 usage: Math.round(cpu.currentLoad * 10) / 10,
@@ -85,7 +157,10 @@ app.get('/api/metrics', async (req, res) => {
                 rxBytes: primaryNetwork.rx_bytes || 0,
                 txBytes: primaryNetwork.tx_bytes || 0,
                 rxFormatted: formatBytes(primaryNetwork.rx_bytes || 0),
-                txFormatted: formatBytes(primaryNetwork.tx_bytes || 0)
+                txFormatted: formatBytes(primaryNetwork.tx_bytes || 0),
+                month: monthly.month,
+                monthBytes: monthly.monthBytes,
+                monthFormatted: formatBytes(monthly.monthBytes)
             },
             timestamp: new Date().toISOString()
         };
@@ -203,4 +278,4 @@ if (require.main === module) {
 }
 
 // Export for testing
-module.exports = { app, formatBytes, formatUptime };
+module.exports = { app, formatBytes, formatUptime, monthKey, updateMonthlyBandwidth };

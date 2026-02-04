@@ -19,10 +19,10 @@ Complete testing documentation for VPS Visual Dashboard.
 
 | Category | Tests | Framework |
 |----------|-------|-----------|
-| Backend Unit | 11 | Vitest |
+| Backend Unit | 14 | Vitest |
 | Frontend Unit | 18 | Vitest + JSDOM |
 | E2E | 17 | Playwright |
-| **Total** | **46** | - |
+| **Total** | **49** | - |
 
 ---
 
@@ -92,7 +92,7 @@ Location: `tests/backend/`
 
 | File | Tests | Description |
 |------|-------|-------------|
-| `metrics.test.js` | 11 | Utility functions (formatBytes/formatUptime) + API stubs |
+| `metrics.test.js` | 14 | Utilities (formatBytes/formatUptime/monthly bandwidth) + API stubs |
 | `system.test.js` | 3 | System info endpoint |
 
 **What's tested:**
