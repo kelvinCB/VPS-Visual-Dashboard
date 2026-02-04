@@ -299,15 +299,6 @@ app.post('/api/processes/:pid/kill', async (req, res) => {
 
     try {
         process.kill(pid, 'SIGTERM');
-        setTimeout(() => {
-            try {
-                process.kill(pid, 0);
-                process.kill(pid, 'SIGKILL');
-            } catch (e) {
-                // ignore
-            }
-        }, 2000);
-
         res.json({ success: true, message: `Process ${pid} termination signal sent` });
     } catch (error) {
         console.error(`Error killing process ${pid}:`, error);

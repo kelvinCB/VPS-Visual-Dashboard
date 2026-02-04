@@ -444,30 +444,43 @@ async function openMemoryModal() {
         modalElements.memSwap.textContent = data.breakdown.swapUsed;
 
         // Update processes table
+
+        // Helper to escape HTML for attributes
+        const escapeHtml = (str) => {
+            if (!str) return '';
+            return str
+                .replace(/&/g, '&amp;')
+                .replace(/</g, '&lt;')
+                .replace(/>/g, '&gt;')
+                .replace(/"/g, '&quot;')
+                .replace(/'/g, '&#039;');
+        };
+
         modalElements.processesTbody.innerHTML = data.processes
             .map(proc => {
                 const isHighMem = proc.memoryPercent > 20;
                 let actions = '';
+                const safeName = escapeHtml(proc.name);
 
                 if (isHighMem) {
                     const isMinecraft = data.minecraftPid && proc.pid === data.minecraftPid;
 
                     if (isMinecraft) {
                         actions = `
-                            <button class="btn-action btn-restart" onclick="restartProcess(${proc.pid})" title="Restart Minecraft Server">🔄</button>
-                            <button class="btn-action btn-kill" onclick="killProcess(${proc.pid}, '${proc.name}')" title="Kill">💀</button>
+                            <button class="btn-action btn-restart" data-action="restart" data-pid="${proc.pid}" data-name="${safeName}" title="Restart Minecraft Server">🔄</button>
+                            <button class="btn-action btn-kill" data-action="kill" data-pid="${proc.pid}" data-name="${safeName}" title="Kill">💀</button>
                         `;
                     } else {
                         // Regular high mem process -> Kill only
                         actions = `
-                            <button class="btn-action btn-kill" onclick="killProcess(${proc.pid}, '${proc.name}')" title="Kill">💀</button>
+                            <button class="btn-action btn-kill" data-action="kill" data-pid="${proc.pid}" data-name="${safeName}" title="Kill">💀</button>
                         `;
                     }
                 }
 
                 return `
                 <tr>
-                    <td>${proc.name}</td>
+                    <td>${escapeHtml(proc.name)}</td>
                     <td>${proc.pid}</td>
                     <td>${proc.memoryFormatted}</td>
                     <td>${proc.memoryPercent}%</td>
@@ -502,8 +515,8 @@ async function openMemoryModal() {
     }
 }
 
-// Make functions global for onclick events
-window.killProcess = async function (pid, name) {
+// Action Handlers
+async function handleKillProcess(pid, name) {
     if (!confirm(`Are you sure you want to KILL process "${name}" (PID: ${pid})?`)) return;
 
     try {
@@ -519,9 +532,9 @@ window.killProcess = async function (pid, name) {
     } catch (error) {
         alert('Error: ' + error.message);
     }
-};
+}
 
-window.restartProcess = async function (pid) {
+async function handleRestartProcess(pid) {
     if (!confirm(`Restart Minecraft Server (PID: ${pid})? This will kill the process and attempt to start it again.`)) return;
 
     try {
@@ -536,8 +549,9 @@ window.restartProcess = async function (pid) {
     } catch (error) {
         alert('Error: ' + error.message);
     }
-};
+}
 
+// Make startMinecraft global as it is used directly
 window.startMinecraft = async function () {
     try {
         const res = await fetch(`${CONFIG.API_BASE}/api/services/minecraft/start`, { method: 'POST' });
@@ -574,6 +588,22 @@ function init() {
 
     // Memory card click handler (open modal)
     modalElements.memoryCard.addEventListener('click', openMemoryModal);
+
+    // Process Table Event Delegation
+    modalElements.processesTbody.addEventListener('click', (e) => {
+        const btn = e.target.closest('.btn-action');
+        if (!btn) return;
+
+        const action = btn.dataset.action;
+        const pid = btn.dataset.pid;
+        const name = btn.dataset.name;
+
+        if (action === 'kill') {
+            handleKillProcess(pid, name);
+        } else if (action === 'restart') {
+            handleRestartProcess(pid);
+        }
+    });
 
     // Bandwidth card click handler (set monthly cap)
     const bandwidthCard = document.getElementById('bandwidth-card');
