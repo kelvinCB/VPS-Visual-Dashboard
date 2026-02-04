@@ -1,9 +1,11 @@
+require('dotenv').config();
 const express = require('express');
 const cors = require('cors');
 const path = require('path');
 const os = require('os');
 const si = require('systeminformation');
 const fs = require('fs');
+const cp = require('child_process');
 
 const app = express();
 const PORT = process.env.PORT || 7847;
@@ -206,6 +208,43 @@ app.get('/api/system', async (req, res) => {
     }
 });
 
+// Helper to run shell command (detached/spawn)
+const runCommandDetached = (command) => {
+    return new Promise((resolve, reject) => {
+
+        // We use 'sh -c' to properly handle shell piping/redirection if present in the command
+        const child = cp.spawn('sh', ['-c', command], {
+            detached: true,
+            stdio: 'ignore' // Ignore stdio to avoid buffer limits
+        });
+
+        child.on('error', (err) => {
+            console.error(`Spawn error: ${err}`);
+            reject(err);
+        });
+
+        // Monitor for immediate failure (e.g., command not found, syntax error)
+        // If it survives for 500ms, we assume it started successfully as a background service.
+        const STARTUP_CHECK_MS = 500;
+
+        const timeoutId = setTimeout(() => {
+            // Process is still running after check period -> Success
+            child.unref(); // Allow parent to exit
+            resolve('Command started in background');
+        }, STARTUP_CHECK_MS);
+
+        child.on('exit', (code) => {
+            clearTimeout(timeoutId);
+            if (code !== 0) {
+                reject(new Error(`Command failed immediately with exit code ${code}`));
+            } else {
+                // Short-lived command completed successfully
+                resolve('Command completed successfully');
+            }
+        });
+    });
+};
+
 // API: Get top processes by memory usage
 app.get('/api/processes', async (req, res) => {
     try {
@@ -213,7 +252,6 @@ app.get('/api/processes', async (req, res) => {
         const mem = await si.mem();
 
         // Sort by memory usage and take top 15
-        // Use mem (total virtual+rss) as memRss can be inaccurate on VPS
         const topProcesses = processes.list
             .filter(proc => proc.mem > 0)
             .sort((a, b) => b.mem - a.mem)
@@ -249,14 +287,83 @@ app.get('/api/processes', async (req, res) => {
             swapFree: formatBytes(mem.swapfree || 0)
         };
 
+        // Check if Minecraft is running and get its PID
+        const mcProc = processes.list.find(p =>
+            p.name.includes('java') && (p.command || '').includes('minecraft') ||
+            p.name.includes('minecraft')
+        );
+
         res.json({
             breakdown: memoryBreakdown,
             processes: topProcesses,
+            isMinecraftRunning: !!mcProc,
+            minecraftPid: mcProc ? mcProc.pid : null, // EXPOSE PID HERE
             timestamp: new Date().toISOString()
         });
     } catch (error) {
         console.error('Error getting processes:', error);
         res.status(500).json({ error: 'Failed to get process information' });
+    }
+});
+
+// API: Kill process by PID
+app.post('/api/processes/:pid/kill', async (req, res) => {
+    const pid = parseInt(req.params.pid);
+
+    // Block invalid, 0, or negative PIDs (which target process groups)
+    if (!pid || pid <= 0) {
+        return res.status(400).json({ error: 'Invalid PID' });
+    }
+
+    try {
+        process.kill(pid, 'SIGTERM');
+        res.json({ success: true, message: `Process ${pid} termination signal sent` });
+    } catch (error) {
+        console.error(`Error killing process ${pid}:`, error);
+        res.status(500).json({ error: `Failed to kill process: ${error.message}` });
+    }
+});
+
+// API: Start Minecraft Server
+app.post('/api/services/minecraft/start', async (req, res) => {
+    const startCommand = process.env.MC_START_COMMAND || 'echo "MC_START_COMMAND not configured" >> /tmp/mc_start_log.txt';
+
+    try {
+        console.log(`Starting Minecraft with command: ${startCommand}`);
+        await runCommandDetached(startCommand);
+        res.json({ success: true, message: 'Minecraft start command executed' });
+    } catch (error) {
+        console.error('Error starting Minecraft:', error);
+        res.status(500).json({ error: 'Failed to start Minecraft' });
+    }
+});
+
+// API: Restart Minecraft Server
+app.post('/api/services/minecraft/restart', async (req, res) => {
+    try {
+        // 1. Find and kill
+        const processes = await si.processes();
+        const mcProcs = processes.list.filter(p =>
+            (p.name.includes('java') && (p.command || '').includes('minecraft')) ||
+            p.name.includes('minecraft')
+        );
+
+        for (const proc of mcProcs) {
+            try {
+                process.kill(proc.pid, 'SIGKILL');
+            } catch (e) { /* ignore */ }
+        }
+
+        // 2. Wait and Start
+        setTimeout(async () => {
+            const startCommand = process.env.MC_START_COMMAND || 'echo "MC_START_COMMAND not configured"';
+            await runCommandDetached(startCommand).catch(err => console.error('Restart-Start error:', err));
+        }, 2000);
+
+        res.json({ success: true, message: 'Minecraft restart sequence initiated' });
+    } catch (error) {
+        console.error('Error restarting Minecraft:', error);
+        res.status(500).json({ error: 'Failed to restart Minecraft' });
     }
 });
 

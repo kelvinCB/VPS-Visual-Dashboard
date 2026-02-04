@@ -19,10 +19,10 @@ Complete testing documentation for VPS Visual Dashboard.
 
 | Category | Tests | Framework |
 |----------|-------|-----------|
-| Backend Unit | 14 | Vitest |
-| Frontend Unit | 18 | Vitest + JSDOM |
-| E2E | 17 | Playwright |
-| **Total** | **49** | - |
+|| Backend Unit | 20 | Vitest |
+| Frontend Unit | 19 | Vitest + JSDOM |
+| E2E | 19 | Playwright |
+| **Total** | **58** | - |
 
 ---
 
@@ -94,11 +94,13 @@ Location: `tests/backend/`
 |------|-------|-------------|
 | `metrics.test.js` | 14 | Utilities (formatBytes/formatUptime/monthly bandwidth) + API stubs |
 | `system.test.js` | 3 | System info endpoint |
+| `process.test.js` | 3 | Process control endpoints (kill/start/restart) |
 
 **What's tested:**
 - `formatBytes()` function with various inputs
 - `formatUptime()` function with seconds conversion
 - API response structure validation
+- Process control logic (mocked)
 
 ### Frontend Unit Tests
 
@@ -108,12 +110,14 @@ Location: `tests/frontend/`
 |------|-------|-------------|
 | `app.test.js` | 10 | Configuration, formatting helpers |
 | `rendering.test.js` | 8 | DOM structure, initial state |
+| `process-controls.test.js` | 1 | Process control buttons visibility (JSDOM) |
 
 **What's tested:**
 - Configuration constants (refresh intervals)
 - Traffic value formatting function
 - DOM element existence
 - Initial values (zeros, "Loading...")
+- Action buttons rendering logic
 
 ### E2E Tests
 
@@ -122,6 +126,7 @@ Location: `tests/e2e/`
 | File | Tests | Description |
 |------|-------|-------------|
 | `dashboard.spec.js` | 17 | Full user flows, API integration |
+| `process-control.spec.js` | 2 | Process kill/start/restart flows with mocked API |
 
 **What's tested:**
 - Page loads correctly
@@ -131,6 +136,8 @@ Location: `tests/e2e/`
 - Refresh button functionality
 - Responsive design (mobile viewport)
 - System info updates after load
+- Process kill confirmation and API call
+- Start Minecraft button visibility and action
 
 ---
 

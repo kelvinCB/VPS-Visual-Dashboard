@@ -429,7 +429,7 @@ async function fetchProcesses() {
 
 async function openMemoryModal() {
     modalElements.overlay.classList.add('active');
-    modalElements.processesTbody.innerHTML = '<tr><td colspan="4">Loading...</td></tr>';
+    modalElements.processesTbody.innerHTML = '<tr><td colspan="5">Loading...</td></tr>';
 
     try {
         const data = await fetchProcesses();
@@ -444,21 +444,129 @@ async function openMemoryModal() {
         modalElements.memSwap.textContent = data.breakdown.swapUsed;
 
         // Update processes table
+
+        // Helper to escape HTML for attributes
+        const escapeHtml = (str) => {
+            if (!str) return '';
+            return str
+                .replace(/&/g, '&amp;')
+                .replace(/</g, '&lt;')
+                .replace(/>/g, '&gt;')
+                .replace(/"/g, '&quot;')
+                .replace(/'/g, '&#039;');
+        };
+
         modalElements.processesTbody.innerHTML = data.processes
-            .map(proc => `
+            .map(proc => {
+                const isHighMem = proc.memoryPercent > 20;
+                let actions = '';
+                const safeName = escapeHtml(proc.name);
+
+                if (isHighMem) {
+                    const isMinecraft = data.minecraftPid && proc.pid === data.minecraftPid;
+
+                    if (isMinecraft) {
+                        actions = `
+                            <button class="btn-action btn-restart" data-action="restart" data-pid="${proc.pid}" data-name="${safeName}" title="Restart Minecraft Server">🔄</button>
+                            <button class="btn-action btn-kill" data-action="kill" data-pid="${proc.pid}" data-name="${safeName}" title="Kill">💀</button>
+                        `;
+                    } else {
+                        // Regular high mem process -> Kill only
+                        actions = `
+                            <button class="btn-action btn-kill" data-action="kill" data-pid="${proc.pid}" data-name="${safeName}" title="Kill">💀</button>
+                        `;
+                    }
+                }
+
+                return `
                 <tr>
-                    <td>${proc.name}</td>
+                    <td>${escapeHtml(proc.name)}</td>
                     <td>${proc.pid}</td>
                     <td>${proc.memoryFormatted}</td>
                     <td>${proc.memoryPercent}%</td>
+                    <td>${actions}</td>
                 </tr>
-            `)
+            `
+            })
             .join('');
 
+        // Show "Start Minecraft" button if not running
+        let startBtn = document.getElementById('btn-start-mc');
+        if (!startBtn) {
+            startBtn = document.createElement('button');
+            startBtn.id = 'btn-start-mc';
+            startBtn.className = 'btn-primary';
+            startBtn.textContent = '▶️ Start Minecraft Server';
+            startBtn.style.marginTop = '1rem';
+            startBtn.style.width = '100%';
+            startBtn.onclick = startMinecraft;
+            document.querySelector('.modal-body').appendChild(startBtn);
+        }
+
+        if (data.isMinecraftRunning) {
+            startBtn.style.display = 'none';
+        } else {
+            startBtn.style.display = 'block';
+        }
+
     } catch (error) {
-        modalElements.processesTbody.innerHTML = '<tr><td colspan="4">Error loading data</td></tr>';
+        console.error(error);
+        modalElements.processesTbody.innerHTML = '<tr><td colspan="5">Error loading data</td></tr>';
     }
 }
+
+// Action Handlers
+async function handleKillProcess(pid, name) {
+    if (!confirm(`Are you sure you want to KILL process "${name}" (PID: ${pid})?`)) return;
+
+    try {
+        const res = await fetch(`${CONFIG.API_BASE}/api/processes/${pid}/kill`, { method: 'POST' });
+        const data = await res.json();
+
+        if (data.success) {
+            alert('Process killed successfully');
+            openMemoryModal(); // Refresh
+        } else {
+            alert('Failed to kill process: ' + data.error);
+        }
+    } catch (error) {
+        alert('Error: ' + error.message);
+    }
+}
+
+async function handleRestartProcess(pid) {
+    if (!confirm(`Restart Minecraft Server (PID: ${pid})? This will kill the process and attempt to start it again.`)) return;
+
+    try {
+        const res = await fetch(`${CONFIG.API_BASE}/api/services/minecraft/restart`, { method: 'POST' });
+        const data = await res.json();
+        if (data.success) {
+            alert('Minecraft is restarting...');
+            openMemoryModal(); // Refresh
+        } else {
+            alert('Failed: ' + data.error);
+        }
+    } catch (error) {
+        alert('Error: ' + error.message);
+    }
+}
+
+// Make startMinecraft global as it is used directly
+window.startMinecraft = async function () {
+    try {
+        const res = await fetch(`${CONFIG.API_BASE}/api/services/minecraft/start`, { method: 'POST' });
+        const data = await res.json();
+        if (data.success) {
+            alert('Start command sent!');
+            // Poll for updates
+            setTimeout(openMemoryModal, 3000);
+        } else {
+            alert('Failed: ' + data.error);
+        }
+    } catch (error) {
+        alert('Error: ' + error.message);
+    }
+};
 
 function closeMemoryModal() {
     modalElements.overlay.classList.remove('active');
@@ -480,6 +588,22 @@ function init() {
 
     // Memory card click handler (open modal)
     modalElements.memoryCard.addEventListener('click', openMemoryModal);
+
+    // Process Table Event Delegation
+    modalElements.processesTbody.addEventListener('click', (e) => {
+        const btn = e.target.closest('.btn-action');
+        if (!btn) return;
+
+        const action = btn.dataset.action;
+        const pid = btn.dataset.pid;
+        const name = btn.dataset.name;
+
+        if (action === 'kill') {
+            handleKillProcess(pid, name);
+        } else if (action === 'restart') {
+            handleRestartProcess(pid);
+        }
+    });
 
     // Bandwidth card click handler (set monthly cap)
     const bandwidthCard = document.getElementById('bandwidth-card');
