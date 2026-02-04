@@ -826,11 +826,11 @@ body {
 
 /* ===== Animations (Safe, CSS-only) ===== */
 /* Entrance animations are opt-in via body.is-ready to avoid animating during initial paint */
-html.js body:not(.is-ready) .header,
-html.js body:not(.is-ready) .system-info-bar,
-html.js body:not(.is-ready) .metric-card,
-html.js body:not(.is-ready) .details-card,
-html.js body:not(.is-ready) .footer {
+html.js body.animate:not(.is-ready) .header,
+html.js body.animate:not(.is-ready) .system-info-bar,
+html.js body.animate:not(.is-ready) .metric-card,
+html.js body.animate:not(.is-ready) .details-card,
+html.js body.animate:not(.is-ready) .footer {
   opacity: 0;
   transform: translateY(10px);
 }

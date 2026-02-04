@@ -657,6 +657,11 @@ function init() {
 
 // Start the application
 document.addEventListener('DOMContentLoaded', () => {
+    // Mark that JS is running and animations are enabled for this session.
+    // We keep this separate from `is-ready` so the UI doesn't get stuck hidden
+    // if app.js fails before it can flip the ready flag.
+    document.body.classList.add('animate');
+
     // Register service worker for PWA installability
     if ('serviceWorker' in navigator) {
         navigator.serviceWorker.register('/sw.js').catch(() => {
