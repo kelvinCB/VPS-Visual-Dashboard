@@ -208,6 +208,7 @@ app.get('/api/system', async (req, res) => {
 });
 
 // Helper to run shell command (detached/spawn)
+// WARNING: Ensure 'command' input is sanitized/trusted. This function executes shell commands.
 const runCommandDetached = (command) => {
     return new Promise((resolve, reject) => {
         // We use 'sh -c' to properly handle shell piping/redirection if present in the command
@@ -293,7 +294,8 @@ app.get('/api/processes', async (req, res) => {
 app.post('/api/processes/:pid/kill', async (req, res) => {
     const pid = parseInt(req.params.pid);
 
-    if (!pid) {
+    // Block invalid, 0, or negative PIDs (which target process groups)
+    if (!pid || pid <= 0) {
         return res.status(400).json({ error: 'Invalid PID' });
     }
 
