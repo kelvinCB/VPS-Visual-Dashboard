@@ -24,13 +24,16 @@
     "license": "MIT",
     "dependencies": {
         "cors": "^2.8.5",
+        "dotenv": "^17.2.3",
         "express": "^4.18.2",
         "systeminformation": "^5.21.22"
     },
     "devDependencies": {
         "@playwright/test": "^1.40.0",
         "@vitest/coverage-v8": "^1.2.0",
+        "happy-dom": "^20.5.0",
         "jsdom": "^23.0.1",
+        "supertest": "^7.2.2",
         "vitest": "^1.2.0"
     }
 }

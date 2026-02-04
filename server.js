@@ -1,3 +1,4 @@
+require('dotenv').config();
 const express = require('express');
 const cors = require('cors');
 const path = require('path');
@@ -213,7 +214,6 @@ app.get('/api/processes', async (req, res) => {
         const mem = await si.mem();
 
         // Sort by memory usage and take top 15
-        // Use mem (total virtual+rss) as memRss can be inaccurate on VPS
         const topProcesses = processes.list
             .filter(proc => proc.mem > 0)
             .sort((a, b) => b.mem - a.mem)
@@ -249,14 +249,109 @@ app.get('/api/processes', async (req, res) => {
             swapFree: formatBytes(mem.swapfree || 0)
         };
 
+        // Check if Minecraft is running (simple check by name or command)
+        const isMinecraftRunning = processes.list.some(p =>
+            p.name.includes('java') && (p.command || '').includes('minecraft') ||
+            p.name.includes('minecraft')
+        );
+
         res.json({
             breakdown: memoryBreakdown,
             processes: topProcesses,
+            isMinecraftRunning,
             timestamp: new Date().toISOString()
         });
     } catch (error) {
         console.error('Error getting processes:', error);
         res.status(500).json({ error: 'Failed to get process information' });
+    }
+});
+
+// API: Kill process by PID
+app.post('/api/processes/:pid/kill', async (req, res) => {
+    const pid = parseInt(req.params.pid);
+
+    if (!pid) {
+        return res.status(400).json({ error: 'Invalid PID' });
+    }
+
+    try {
+        process.kill(pid, 'SIGTERM');
+        // Wait a bit and check if still alive, if so, force kill
+        setTimeout(() => {
+            try {
+                process.kill(pid, 0); // Check if exists
+                process.kill(pid, 'SIGKILL'); // Force kill
+            } catch (e) {
+                // Process likely gone, ignore
+            }
+        }, 2000);
+
+        res.json({ success: true, message: `Process ${pid} termination signal sent` });
+    } catch (error) {
+        console.error(`Error killing process ${pid}:`, error);
+        res.status(500).json({ error: `Failed to kill process: ${error.message}` });
+    }
+});
+
+// Helper to run shell command
+const runCommand = (command) => {
+    return new Promise((resolve, reject) => {
+        require('child_process').exec(command, (error, stdout, stderr) => {
+            if (error) {
+                console.error(`Exec error: ${error}`);
+                reject(error);
+                return;
+            }
+            resolve(stdout);
+        });
+    });
+};
+
+// API: Start Minecraft Server
+app.post('/api/services/minecraft/start', async (req, res) => {
+    const startCommand = process.env.MC_START_COMMAND || 'echo "MC_START_COMMAND not configured" >> /tmp/mc_start_log.txt';
+
+    try {
+        console.log(`Starting Minecraft with command: ${startCommand}`);
+        // Run in background / detached mainly, but for now simple exec
+        // Ideally using a process manager like systemd or pm2 is better, 
+        // but executing the command provided is what we'll do.
+        runCommand(startCommand).catch(err => console.error('Background start error:', err));
+
+        res.json({ success: true, message: 'Minecraft start command executed' });
+    } catch (error) {
+        console.error('Error starting Minecraft:', error);
+        res.status(500).json({ error: 'Failed to start Minecraft' });
+    }
+});
+
+// API: Restart Minecraft Server
+app.post('/api/services/minecraft/restart', async (req, res) => {
+    try {
+        // 1. Find and kill
+        const processes = await si.processes();
+        const mcProcs = processes.list.filter(p =>
+            (p.name.includes('java') && (p.command || '').includes('minecraft')) ||
+            p.name.includes('minecraft')
+        );
+
+        for (const proc of mcProcs) {
+            try {
+                process.kill(proc.pid, 'SIGKILL');
+            } catch (e) { /* ignore */ }
+        }
+
+        // 2. Wait and Start
+        setTimeout(async () => {
+            const startCommand = process.env.MC_START_COMMAND || 'echo "MC_START_COMMAND not configured"';
+            runCommand(startCommand).catch(err => console.error('Restart-Start error:', err));
+        }, 2000);
+
+        res.json({ success: true, message: 'Minecraft restart sequence initiated' });
+    } catch (error) {
+        console.error('Error restarting Minecraft:', error);
+        res.status(500).json({ error: 'Failed to restart Minecraft' });
     }
 });
 
