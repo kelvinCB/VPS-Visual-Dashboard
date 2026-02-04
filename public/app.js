@@ -429,7 +429,7 @@ async function fetchProcesses() {
 
 async function openMemoryModal() {
     modalElements.overlay.classList.add('active');
-    modalElements.processesTbody.innerHTML = '<tr><td colspan="4">Loading...</td></tr>';
+    modalElements.processesTbody.innerHTML = '<tr><td colspan="5">Loading...</td></tr>';
 
     try {
         const data = await fetchProcesses();
@@ -445,20 +445,109 @@ async function openMemoryModal() {
 
         // Update processes table
         modalElements.processesTbody.innerHTML = data.processes
-            .map(proc => `
+            .map(proc => {
+                const isHighMem = proc.memoryPercent > 20;
+                let actions = '';
+
+                if (isHighMem) {
+                    actions = `
+                        <button class="btn-action btn-restart" onclick="restartProcess(${proc.pid}, '${proc.name}')" title="Restart">🔄</button>
+                        <button class="btn-action btn-kill" onclick="killProcess(${proc.pid}, '${proc.name}')" title="Kill">💀</button>
+                    `;
+                }
+
+                return `
                 <tr>
                     <td>${proc.name}</td>
                     <td>${proc.pid}</td>
                     <td>${proc.memoryFormatted}</td>
                     <td>${proc.memoryPercent}%</td>
+                    <td>${actions}</td>
                 </tr>
-            `)
+            `
+            })
             .join('');
 
+        // Show "Start Minecraft" button if not running
+        let startBtn = document.getElementById('btn-start-mc');
+        if (!startBtn) {
+            startBtn = document.createElement('button');
+            startBtn.id = 'btn-start-mc';
+            startBtn.className = 'btn-primary';
+            startBtn.textContent = '▶️ Start Minecraft Server';
+            startBtn.style.marginTop = '1rem';
+            startBtn.style.width = '100%';
+            startBtn.onclick = startMinecraft;
+            document.querySelector('.modal-body').appendChild(startBtn);
+        }
+
+        if (data.isMinecraftRunning) {
+            startBtn.style.display = 'none';
+        } else {
+            startBtn.style.display = 'block';
+        }
+
     } catch (error) {
-        modalElements.processesTbody.innerHTML = '<tr><td colspan="4">Error loading data</td></tr>';
+        console.error(error);
+        modalElements.processesTbody.innerHTML = '<tr><td colspan="5">Error loading data</td></tr>';
     }
 }
+
+// Make functions global for onclick events
+window.killProcess = async function (pid, name) {
+    if (!confirm(`Are you sure you want to KILL process "${name}" (PID: ${pid})?`)) return;
+
+    try {
+        const res = await fetch(`${CONFIG.API_BASE}/api/processes/${pid}/kill`, { method: 'POST' });
+        const data = await res.json();
+
+        if (data.success) {
+            alert('Process killed successfully');
+            openMemoryModal(); // Refresh
+        } else {
+            alert('Failed to kill process: ' + data.error);
+        }
+    } catch (error) {
+        alert('Error: ' + error.message);
+    }
+};
+
+window.restartProcess = async function (pid, name) {
+    if (name.includes('java') || name.includes('minecraft')) {
+        if (!confirm(`Restart Minecraft Server? This will kill the process and attempt to start it again.`)) return;
+
+        try {
+            const res = await fetch(`${CONFIG.API_BASE}/api/services/minecraft/restart`, { method: 'POST' });
+            const data = await res.json();
+            if (data.success) {
+                alert('Minecraft is restarting...');
+                openMemoryModal(); // Refresh
+            } else {
+                alert('Failed: ' + data.error);
+            }
+        } catch (error) {
+            alert('Error: ' + error.message);
+        }
+    } else {
+        alert('Restart logic is only implemented for Minecraft/Java processes currently.');
+    }
+};
+
+window.startMinecraft = async function () {
+    try {
+        const res = await fetch(`${CONFIG.API_BASE}/api/services/minecraft/start`, { method: 'POST' });
+        const data = await res.json();
+        if (data.success) {
+            alert('Start command sent!');
+            // Poll for updates
+            setTimeout(openMemoryModal, 3000);
+        } else {
+            alert('Failed: ' + data.error);
+        }
+    } catch (error) {
+        alert('Error: ' + error.message);
+    }
+};
 
 function closeMemoryModal() {
     modalElements.overlay.classList.remove('active');
