@@ -664,6 +664,11 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }
 
+    // Trigger entrance animations (CSS-driven)
+    requestAnimationFrame(() => {
+        document.body.classList.add('is-ready');
+    });
+
     init();
 });
 

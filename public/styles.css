@@ -823,3 +823,50 @@ body {
 .btn-primary:hover {
   background: var(--accent-secondary);
 }
+
+/* ===== Animations (Safe, CSS-only) ===== */
+/* Entrance animations are opt-in via body.is-ready to avoid animating during initial paint */
+body:not(.is-ready) .header,
+body:not(.is-ready) .system-info-bar,
+body:not(.is-ready) .metric-card,
+body:not(.is-ready) .details-card,
+body:not(.is-ready) .footer {
+  opacity: 0;
+  transform: translateY(10px);
+}
+
+body.is-ready .header,
+body.is-ready .system-info-bar,
+body.is-ready .metric-card,
+body.is-ready .details-card,
+body.is-ready .footer {
+  opacity: 1;
+  transform: translateY(0);
+  transition: opacity 420ms ease, transform 420ms ease;
+}
+
+/* Stagger metric cards slightly for a "live" feel */
+body.is-ready .metrics-grid .metric-card:nth-child(1) { transition-delay: 40ms; }
+body.is-ready .metrics-grid .metric-card:nth-child(2) { transition-delay: 80ms; }
+body.is-ready .metrics-grid .metric-card:nth-child(3) { transition-delay: 120ms; }
+body.is-ready .metrics-grid .metric-card:nth-child(4) { transition-delay: 160ms; }
+body.is-ready .metrics-grid .metric-card:nth-child(5) { transition-delay: 200ms; }
+body.is-ready .metrics-grid .metric-card:nth-child(6) { transition-delay: 240ms; }
+
+/* Respect reduced-motion preferences */
+@media (prefers-reduced-motion: reduce) {
+  * {
+    animation: none !important;
+    transition: none !important;
+    scroll-behavior: auto !important;
+  }
+
+  body:not(.is-ready) .header,
+  body:not(.is-ready) .system-info-bar,
+  body:not(.is-ready) .metric-card,
+  body:not(.is-ready) .details-card,
+  body:not(.is-ready) .footer {
+    opacity: 1;
+    transform: none;
+  }
+}
