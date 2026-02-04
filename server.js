@@ -5,6 +5,7 @@ const path = require('path');
 const os = require('os');
 const si = require('systeminformation');
 const fs = require('fs');
+const cp = require('child_process');
 
 const app = express();
 const PORT = process.env.PORT || 7847;
@@ -208,11 +209,11 @@ app.get('/api/system', async (req, res) => {
 });
 
 // Helper to run shell command (detached/spawn)
-// WARNING: Ensure 'command' input is sanitized/trusted. This function executes shell commands.
 const runCommandDetached = (command) => {
     return new Promise((resolve, reject) => {
+
         // We use 'sh -c' to properly handle shell piping/redirection if present in the command
-        const child = require('child_process').spawn('sh', ['-c', command], {
+        const child = cp.spawn('sh', ['-c', command], {
             detached: true,
             stdio: 'ignore' // Ignore stdio to avoid buffer limits
         });
@@ -222,10 +223,25 @@ const runCommandDetached = (command) => {
             reject(err);
         });
 
-        // Since it's detached and we ignore stdio, we assume success if it spawns
-        // We unref to let the parent node process exit independently if needed
-        child.unref();
-        resolve('Command started in background');
+        // Monitor for immediate failure (e.g., command not found, syntax error)
+        // If it survives for 500ms, we assume it started successfully as a background service.
+        const STARTUP_CHECK_MS = 500;
+
+        const timeoutId = setTimeout(() => {
+            // Process is still running after check period -> Success
+            child.unref(); // Allow parent to exit
+            resolve('Command started in background');
+        }, STARTUP_CHECK_MS);
+
+        child.on('exit', (code) => {
+            clearTimeout(timeoutId);
+            if (code !== 0) {
+                reject(new Error(`Command failed immediately with exit code ${code}`));
+            } else {
+                // Short-lived command completed successfully
+                resolve('Command completed successfully');
+            }
+        });
     });
 };
 
