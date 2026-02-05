@@ -4,6 +4,11 @@
  */
 
 // ===== Configuration =====
+// Runtime config can be injected via `public/index.html` (window.CONFIG) without hardcoding secrets.
+const RUNTIME_CONFIG = (typeof window !== 'undefined' && window.CONFIG && typeof window.CONFIG === 'object')
+    ? window.CONFIG
+    : {};
+
 const CONFIG = {
     API_BASE: '',
     REFRESH_INTERVAL: 25000, // 25 seconds
@@ -14,8 +19,29 @@ const CONFIG = {
         memory: { line: '#f97316', fill: 'rgba(249, 115, 22, 0.15)' },
         trafficIn: { line: '#22c55e', fill: 'rgba(34, 197, 94, 0.15)' },
         trafficOut: { line: '#3b82f6', fill: 'rgba(59, 130, 246, 0.15)' }
-    }
+    },
+    // Optional. Used only for sensitive endpoints.
+    // Prefer server-injected config; allow localStorage override for convenience.
+    API_TOKEN: RUNTIME_CONFIG.API_TOKEN
 };
+
+function getApiToken() {
+    try {
+        const override = localStorage.getItem('apiToken');
+        if (override && String(override).trim()) return String(override).trim();
+    } catch {
+        // ignore
+    }
+
+    return CONFIG.API_TOKEN;
+}
+
+function getAuthHeaders() {
+    const token = getApiToken();
+    if (!token) return {};
+    return { Authorization: `Bearer ${token}` };
+}
+
 
 // ===== State =====
 const state = {
@@ -520,7 +546,10 @@ async function handleKillProcess(pid, name) {
     if (!confirm(`Are you sure you want to KILL process "${name}" (PID: ${pid})?`)) return;
 
     try {
-        const res = await fetch(`${CONFIG.API_BASE}/api/processes/${pid}/kill`, { method: 'POST' });
+        const res = await fetch(`${CONFIG.API_BASE}/api/processes/${pid}/kill`, {
+            method: 'POST',
+            headers: { ...getAuthHeaders() }
+        });
         const data = await res.json();
 
         if (data.success) {
@@ -538,7 +567,10 @@ async function handleRestartProcess(pid) {
     if (!confirm(`Restart Minecraft Server (PID: ${pid})? This will kill the process and attempt to start it again.`)) return;
 
     try {
-        const res = await fetch(`${CONFIG.API_BASE}/api/services/minecraft/restart`, { method: 'POST' });
+        const res = await fetch(`${CONFIG.API_BASE}/api/services/minecraft/restart`, {
+            method: 'POST',
+            headers: { ...getAuthHeaders() }
+        });
         const data = await res.json();
         if (data.success) {
             alert('Minecraft is restarting...');
@@ -591,7 +623,10 @@ window.startMinecraft = async function () {
     }
 
     try {
-        const res = await fetch(`${CONFIG.API_BASE}/api/services/minecraft/start`, { method: 'POST' });
+        const res = await fetch(`${CONFIG.API_BASE}/api/services/minecraft/start`, {
+            method: 'POST',
+            headers: { ...getAuthHeaders() }
+        });
         const parsed = await safeParseJsonResponse(res);
 
         // Even if the start endpoint errors (or returns HTML), the server might still be booting.
