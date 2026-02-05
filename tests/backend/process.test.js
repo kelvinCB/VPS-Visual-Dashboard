@@ -12,6 +12,9 @@ describe('Process Control Endpoints', () => {
     beforeEach(() => {
         vi.clearAllMocks();
 
+        // Default behavior should remain unauthenticated unless explicitly configured.
+        delete process.env.DASHBOARD_API_TOKEN;
+
         // Spy on systeminformation methods
         vi.spyOn(si, 'processes').mockResolvedValue({
             list: [
@@ -58,6 +61,36 @@ describe('Process Control Endpoints', () => {
 
         expect(res.status).toBe(200);
         expect(killSpy).toHaveBeenCalledWith(pid, 'SIGTERM');
+    });
+
+    it('should enforce Bearer token auth on sensitive endpoints when DASHBOARD_API_TOKEN is set', async () => {
+        process.env.DASHBOARD_API_TOKEN = 'test-token';
+
+        const res = await request(app).post('/api/processes/123/kill');
+        expect(res.status).toBe(401);
+        expect(res.body).toEqual({ error: 'Unauthorized' });
+    });
+
+    it('should accept Authorization: Bearer <token> when DASHBOARD_API_TOKEN is set', async () => {
+        process.env.DASHBOARD_API_TOKEN = 'test-token';
+
+        const res = await request(app)
+            .post('/api/processes/123/kill')
+            .set('Authorization', 'Bearer test-token');
+
+        expect(res.status).toBe(200);
+        expect(res.body.success).toBe(true);
+    });
+
+    it('should accept X-API-KEY fallback when DASHBOARD_API_TOKEN is set', async () => {
+        process.env.DASHBOARD_API_TOKEN = 'test-token';
+
+        const res = await request(app)
+            .post('/api/processes/123/kill')
+            .set('X-API-KEY', 'test-token');
+
+        expect(res.status).toBe(200);
+        expect(res.body.success).toBe(true);
     });
 
     it('POST /api/processes/:pid/kill should reject non-allowlisted PIDs by default', async () => {

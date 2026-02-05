@@ -296,6 +296,13 @@
     </div>
   </div>
 
+  <script>
+    // Optional runtime configuration.
+    // - API_TOKEN can be injected at deploy-time (e.g. templating, reverse-proxy substitution)
+    // - Or set in browser localStorage as `apiToken`.
+    window.CONFIG = window.CONFIG || {};
+    // window.CONFIG.API_TOKEN = '...'; // DO NOT commit secrets.
+  </script>
   <script src="app.js"></script>
 </body>
 
