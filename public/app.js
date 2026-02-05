@@ -553,18 +553,31 @@ async function handleRestartProcess(pid) {
 
 // Make startMinecraft global as it is used directly
 window.startMinecraft = async function () {
+    const startBtn = document.getElementById('btn-start-mc');
+    if (startBtn) {
+        startBtn.disabled = true;
+        startBtn.textContent = '⏳ Starting...';
+    }
+
     try {
         const res = await fetch(`${CONFIG.API_BASE}/api/services/minecraft/start`, { method: 'POST' });
         const data = await res.json();
+
         if (data.success) {
-            alert('Start command sent!');
-            // Poll for updates
-            setTimeout(openMemoryModal, 3000);
-        } else {
-            alert('Failed: ' + data.error);
+            // Refresh modal so the button can be hidden once status flips to running.
+            setTimeout(openMemoryModal, 2500);
+            alert(data.message || 'Start command sent!');
+            return;
         }
+
+        alert('Failed: ' + (data.error || 'Unknown error'));
     } catch (error) {
         alert('Error: ' + error.message);
+    } finally {
+        if (startBtn) {
+            startBtn.disabled = false;
+            startBtn.textContent = '▶️ Start Minecraft Server';
+        }
     }
 };
 
