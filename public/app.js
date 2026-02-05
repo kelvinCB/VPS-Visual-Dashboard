@@ -629,6 +629,12 @@ window.startMinecraft = async function () {
         });
         const parsed = await safeParseJsonResponse(res);
 
+        // If auth is enabled and token is missing/invalid, do NOT poll.
+        if (res.status === 401 || res.status === 403) {
+            alert('Unauthorized. Please set your API token and try again.');
+            return;
+        }
+
         // Even if the start endpoint errors (or returns HTML), the server might still be booting.
         // Poll status and only show an error if it never comes up.
         const isRunning = await pollMinecraftStatus();

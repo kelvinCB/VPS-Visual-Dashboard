@@ -42,7 +42,36 @@ describe('Frontend Process Control', () => {
         // which is more robust for this setup.
     });
 
-    it('placeholder test', () => {
-        expect(true).toBe(true);
+    it('startMinecraft should short-circuit on 401/403 (no polling)', async () => {
+        // Minimal DOM needed for the function
+        const btn = document.createElement('button');
+        btn.id = 'btn-start-mc';
+        document.body.appendChild(btn);
+
+        // Make polling obvious if called
+        const pollSpy = vi.fn().mockResolvedValue(true);
+        window.pollMinecraftStatus = pollSpy;
+
+        // Mock alert
+        window.alert = vi.fn();
+
+        // Mock fetch returning 401 with JSON
+        global.fetch.mockResolvedValue({
+            status: 401,
+            headers: { get: () => 'application/json' },
+            text: async () => JSON.stringify({ error: 'Unauthorized' })
+        });
+
+        // Provide CONFIG + auth header helper expected by app.js
+        window.CONFIG = { API_BASE: '' };
+        window.getAuthHeaders = () => ({ Authorization: 'Bearer bad' });
+
+        // Evaluate app.js into the DOM context
+        window.eval(appJsContent);
+
+        await window.startMinecraft();
+
+        expect(window.alert).toHaveBeenCalled();
+        expect(pollSpy).not.toHaveBeenCalled();
     });
 });
