@@ -53,7 +53,7 @@ describe('Process Control Endpoints', () => {
         expect(res.body.minecraftPid).toBe(123);
     });
 
-    it('POST /api/processes/:pid/kill should try to kill process', async () => {
+    it('POST /api/processes/:pid/kill should try to kill process (default: only detected Minecraft PID is allowed)', async () => {
         const pid = 123;
         const killSpy = vi.spyOn(process, 'kill');
 
@@ -89,6 +89,28 @@ describe('Process Control Endpoints', () => {
             .post('/api/processes/123/kill')
             .set('X-API-KEY', 'test-token');
 
+        expect(res.status).toBe(200);
+        expect(res.body.success).toBe(true);
+    });
+
+    it('POST /api/processes/:pid/kill should reject non-allowlisted PIDs by default', async () => {
+        const res = await request(app).post('/api/processes/456/kill');
+        expect(res.status).toBe(403);
+        expect(res.body).toEqual({ error: 'PID not allowed', pid: 456 });
+    });
+
+    it('POST /api/processes/:pid/kill should allow PIDs from ALLOWED_KILL_PIDS', async () => {
+        process.env.ALLOWED_KILL_PIDS = '456';
+
+        const res = await request(app).post('/api/processes/456/kill');
+        expect(res.status).toBe(200);
+        expect(res.body.success).toBe(true);
+    });
+
+    it('POST /api/processes/:pid/kill should allow PIDs that match ALLOWED_KILL_PROCESS_MATCH', async () => {
+        process.env.ALLOWED_KILL_PROCESS_MATCH = 'node';
+
+        const res = await request(app).post('/api/processes/456/kill');
         expect(res.status).toBe(200);
         expect(res.body.success).toBe(true);
     });
