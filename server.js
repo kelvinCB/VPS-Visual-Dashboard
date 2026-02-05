@@ -325,20 +325,22 @@ app.post('/api/processes/:pid/kill', async (req, res) => {
 });
 
 // API: Start Minecraft Server
-// Helper to verify if Minecraft started (screen session exists)
+// Helper to verify if Minecraft started (Java process exists)
 const verifyMinecraftStarted = () => {
     return new Promise((resolve) => {
-        // Give it a moment to initialize
-        setTimeout(() => {
-            cp.exec('screen -ls | grep minecraft', (err, stdout) => {
-                // If grep finds it, exit code is 0 (err is null). If not found, code 1.
-                if (!err && stdout.trim().length > 0) {
-                    resolve(true);
-                } else {
-                    resolve(false);
-                }
-            });
-        }, 2000); // Wait 2s for screen to register/fail
+        setTimeout(async () => {
+            try {
+                const processes = await si.processes();
+                const mcProc = processes.list.find(p =>
+                    (p.name.includes('java') && (p.command || '').includes('minecraft')) ||
+                    p.name.includes('minecraft')
+                );
+                resolve(!!mcProc);
+            } catch (e) {
+                console.error('Verification error:', e);
+                resolve(false);
+            }
+        }, 2000); // Wait 2s for Java process to initialize
     });
 };
 

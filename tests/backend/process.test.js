@@ -70,7 +70,7 @@ describe('Process Control Endpoints', () => {
         const res = await request(app).post('/api/services/minecraft/start');
 
         expect(res.status).toBe(200);
-        expect(cp.exec).toHaveBeenCalledWith(expect.stringContaining('screen -ls'), expect.any(Function));
+        expect(si.processes).toHaveBeenCalled();
     }, 6000); // 6s timeout
 
     it('POST /api/services/minecraft/restart should sequence kill and start', async () => {
