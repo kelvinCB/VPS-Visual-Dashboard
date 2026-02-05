@@ -36,6 +36,9 @@ describe('Frontend Process Control', () => {
         global.document = document;
         global.window = window;
 
+        // Ensure fetch exists in the window context for app.js
+        window.fetch = global.fetch;
+
         // We can't easily execute app.js because it has immediate execution calls
         // But we can test logical functions if we had them separated.
         // Given the architecture, I will skip complex unit tests here and rely on E2E
@@ -48,18 +51,25 @@ describe('Frontend Process Control', () => {
         btn.id = 'btn-start-mc';
         document.body.appendChild(btn);
 
-        // Make polling obvious if called
-        const pollSpy = vi.fn().mockResolvedValue(true);
-        window.pollMinecraftStatus = pollSpy;
-
         // Mock alert
         window.alert = vi.fn();
 
-        // Mock fetch returning 401 with JSON
-        global.fetch.mockResolvedValue({
-            status: 401,
-            headers: { get: () => 'application/json' },
-            text: async () => JSON.stringify({ error: 'Unauthorized' })
+        // Mock fetch: return 401 for /start. If polling happens, we'd see a second call to /status.
+        global.fetch.mockImplementation(async (url) => {
+            if (String(url).includes('/api/services/minecraft/start')) {
+                return {
+                    status: 401,
+                    headers: { get: () => 'application/json' },
+                    text: async () => JSON.stringify({ error: 'Unauthorized' })
+                };
+            }
+
+            // If we ever fetch status, that means polling happened (test should fail).
+            if (String(url).includes('/api/services/minecraft/status')) {
+                throw new Error('Polling should not occur on 401/403');
+            }
+
+            throw new Error(`Unexpected fetch URL: ${url}`);
         });
 
         // Provide CONFIG + auth header helper expected by app.js
@@ -72,6 +82,7 @@ describe('Frontend Process Control', () => {
         await window.startMinecraft();
 
         expect(window.alert).toHaveBeenCalled();
-        expect(pollSpy).not.toHaveBeenCalled();
+        expect(global.fetch).toHaveBeenCalledTimes(1);
+        expect(String(global.fetch.mock.calls[0][0])).toContain('/api/services/minecraft/start');
     });
 });
