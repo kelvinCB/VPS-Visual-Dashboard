@@ -16,6 +16,37 @@ app.use(cors());
 app.use(express.json());
 app.use(express.static(path.join(__dirname, 'public')));
 
+// ===== Optional API Auth (Bearer token)
+// If DASHBOARD_API_TOKEN is not set, all endpoints behave as they do today.
+// If set, sensitive endpoints must provide:
+//   Authorization: Bearer <token>
+// or
+//   X-API-KEY: <token>
+function getProvidedApiToken(req) {
+    const auth = req.headers['authorization'];
+    if (auth && typeof auth === 'string') {
+        const m = auth.match(/^Bearer\s+(.+)$/i);
+        if (m) return m[1];
+    }
+
+    const xApiKey = req.headers['x-api-key'];
+    if (typeof xApiKey === 'string' && xApiKey.trim()) return xApiKey.trim();
+
+    return null;
+}
+
+function requireApiTokenIfConfigured(req, res, next) {
+    const required = process.env.DASHBOARD_API_TOKEN;
+    if (!required) return next();
+
+    const provided = getProvidedApiToken(req);
+    if (!provided || provided !== required) {
+        return res.status(401).json({ error: 'Unauthorized' });
+    }
+
+    return next();
+}
+
 // Cache for metrics to avoid excessive system calls
 let metricsCache = null;
 let metricsCacheTime = 0;
@@ -351,7 +382,7 @@ app.get('/api/processes', async (req, res) => {
 });
 
 // API: Kill process by PID
-app.post('/api/processes/:pid/kill', async (req, res) => {
+app.post('/api/processes/:pid/kill', requireApiTokenIfConfigured, async (req, res) => {
     const pid = parseInt(req.params.pid);
 
     // Block invalid, 0, or negative PIDs (which target process groups)
@@ -396,7 +427,7 @@ app.get('/api/services/minecraft/status', async (req, res) => {
 });
 
 // API: Start Minecraft Server (with verification)
-app.post('/api/services/minecraft/start', async (req, res) => {
+app.post('/api/services/minecraft/start', requireApiTokenIfConfigured, async (req, res) => {
     const startCommand = process.env.MC_START_COMMAND || 'echo "MC_START_COMMAND not configured" >> /tmp/mc_start_log.txt';
     const port = Number(process.env.MC_PORT || DEFAULT_MC_PORT);
     const logPath = process.env.MC_LOG_PATH || '/home/beto/minecraft_n/server-start.log';
@@ -441,7 +472,7 @@ app.post('/api/services/minecraft/start', async (req, res) => {
 });
 
 // API: Restart Minecraft Server
-app.post('/api/services/minecraft/restart', async (req, res) => {
+app.post('/api/services/minecraft/restart', requireApiTokenIfConfigured, async (req, res) => {
     try {
         // 1. Find and kill
         const processes = await si.processes();
