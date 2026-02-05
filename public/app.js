@@ -490,7 +490,11 @@ async function openMemoryModal() {
             })
             .join('');
 
-        // Show "Start Minecraft" button if not running
+        // Show "Start Minecraft" button only when the server is actually stopped.
+        // Using /api/services/minecraft/status avoids false positives/negatives from process heuristics.
+        const statusRes = await fetch(`${CONFIG.API_BASE}/api/services/minecraft/status`);
+        const status = await statusRes.json().catch(() => ({ running: false }));
+
         let startBtn = document.getElementById('btn-start-mc');
         if (!startBtn) {
             startBtn = document.createElement('button');
@@ -503,11 +507,7 @@ async function openMemoryModal() {
             document.querySelector('.modal-body').appendChild(startBtn);
         }
 
-        if (data.isMinecraftRunning) {
-            startBtn.style.display = 'none';
-        } else {
-            startBtn.style.display = 'block';
-        }
+        startBtn.style.display = status?.running ? 'none' : 'block';
 
     } catch (error) {
         console.error(error);
