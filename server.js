@@ -6,6 +6,7 @@ const os = require('os');
 const si = require('systeminformation');
 const fs = require('fs');
 const cp = require('child_process');
+const net = require('net');
 
 const app = express();
 const PORT = process.env.PORT || 7847;
@@ -208,14 +209,59 @@ app.get('/api/system', async (req, res) => {
     }
 });
 
-// Helper to run shell command (detached/spawn)
+// ===== Process helpers (Minecraft)
+const DEFAULT_MC_PORT = Number(process.env.MC_PORT || 25565);
+
+function sleep(ms) {
+    return new Promise((r) => setTimeout(r, ms));
+}
+
+async function isPortListening(port = DEFAULT_MC_PORT, host = '127.0.0.1') {
+    // Portable check: attempt a TCP connection.
+    // Note: this only confirms a listener is accepting connections on that host/port.
+    return await new Promise((resolve) => {
+        const socket = new net.Socket();
+        const timeoutMs = 350;
+
+        const done = (ok) => {
+            try { socket.destroy(); } catch { /* ignore */ }
+            resolve(ok);
+        };
+
+        socket.setTimeout(timeoutMs);
+        socket.once('connect', () => done(true));
+        socket.once('timeout', () => done(false));
+        socket.once('error', () => done(false));
+
+        try {
+            socket.connect(port, host);
+        } catch {
+            done(false);
+        }
+    });
+}
+
+function tailFile(filePath, lines = 120) {
+    try {
+        if (!filePath) return null;
+        if (!fs.existsSync(filePath)) return null;
+        const out = cp.execFileSync('sh', ['-lc', `tail -n ${Number(lines)} ${JSON.stringify(filePath)}`], {
+            encoding: 'utf8'
+        });
+        return out;
+    } catch {
+        return null;
+    }
+}
+
+// Helper to run shell command (detached/spawn). IMPORTANT:
+// - A detached process can still fail shortly after start.
+// - For services like Minecraft, you should verify it actually started (e.g. port listening).
 const runCommandDetached = (command) => {
     return new Promise((resolve, reject) => {
-
-        // We use 'sh -c' to properly handle shell piping/redirection if present in the command
         const child = cp.spawn('sh', ['-c', command], {
             detached: true,
-            stdio: 'ignore' // Ignore stdio to avoid buffer limits
+            stdio: 'ignore'
         });
 
         child.on('error', (err) => {
@@ -223,13 +269,12 @@ const runCommandDetached = (command) => {
             reject(err);
         });
 
-        // Monitor for immediate failure (e.g., command not found, syntax error)
-        // If it survives for 500ms, we assume it started successfully as a background service.
-        const STARTUP_CHECK_MS = 500;
+        // Monitor for immediate failure (e.g., command not found, syntax error).
+        // If it survives for a moment, we assume it started successfully as a background service.
+        const STARTUP_CHECK_MS = 750;
 
         const timeoutId = setTimeout(() => {
-            // Process is still running after check period -> Success
-            child.unref(); // Allow parent to exit
+            child.unref();
             resolve('Command started in background');
         }, STARTUP_CHECK_MS);
 
@@ -238,7 +283,6 @@ const runCommandDetached = (command) => {
             if (code !== 0) {
                 reject(new Error(`Command failed immediately with exit code ${code}`));
             } else {
-                // Short-lived command completed successfully
                 resolve('Command completed successfully');
             }
         });
@@ -324,17 +368,75 @@ app.post('/api/processes/:pid/kill', async (req, res) => {
     }
 });
 
-// API: Start Minecraft Server
+// API: Minecraft status
+app.get('/api/services/minecraft/status', async (req, res) => {
+    try {
+        const processes = await si.processes();
+        const mcProc = processes.list.find(p =>
+            (p.name.includes('java') && (p.command || '').includes('minecraft')) ||
+            p.name.includes('minecraft') ||
+            (p.command || '').includes('/home/beto/minecraft_n')
+        );
+
+        const port = Number(process.env.MC_PORT || DEFAULT_MC_PORT);
+        const listening = await isPortListening(port);
+
+        res.json({
+            success: true,
+            running: Boolean(mcProc) || listening,
+            listening,
+            port,
+            pid: mcProc ? mcProc.pid : null,
+            timestamp: new Date().toISOString()
+        });
+    } catch (error) {
+        console.error('Error getting Minecraft status:', error);
+        res.status(500).json({ error: 'Failed to get Minecraft status' });
+    }
+});
+
+// API: Start Minecraft Server (with verification)
 app.post('/api/services/minecraft/start', async (req, res) => {
     const startCommand = process.env.MC_START_COMMAND || 'echo "MC_START_COMMAND not configured" >> /tmp/mc_start_log.txt';
+    const port = Number(process.env.MC_PORT || DEFAULT_MC_PORT);
+    const logPath = process.env.MC_LOG_PATH || '/home/beto/minecraft_n/server-start.log';
 
     try {
+        // If already running, do nothing.
+        if (await isPortListening(port)) {
+            return res.json({ success: true, message: `Minecraft already running (port ${port} listening)` });
+        }
+
         console.log(`Starting Minecraft with command: ${startCommand}`);
         await runCommandDetached(startCommand);
-        res.json({ success: true, message: 'Minecraft start command executed' });
+
+        // Verify startup (don't lie)
+        const maxWaitMs = Number(
+            process.env.MC_START_VERIFY_TIMEOUT_MS ?? (process.env.NODE_ENV === 'test' ? 0 : 15000)
+        );
+
+        if (maxWaitMs > 0) {
+            const intervalMs = 1000;
+            const startedAt = Date.now();
+            while ((Date.now() - startedAt) < maxWaitMs) {
+                if (await isPortListening(port)) {
+                    return res.json({ success: true, message: `Minecraft started (port ${port} listening)` });
+                }
+                await sleep(intervalMs);
+            }
+
+            const tail = tailFile(logPath, 120);
+            return res.status(500).json({
+                error: `Minecraft did not start (port ${port} not listening after ${maxWaitMs}ms)`,
+                logTail: tail
+            });
+        }
+
+        return res.json({ success: true, message: 'Minecraft start command executed' });
     } catch (error) {
         console.error('Error starting Minecraft:', error);
-        res.status(500).json({ error: 'Failed to start Minecraft' });
+        const tail = tailFile(process.env.MC_LOG_PATH || '/home/beto/minecraft_n/server-start.log', 120);
+        res.status(500).json({ error: `Failed to start Minecraft: ${error.message}`, logTail: tail });
     }
 });
 
