@@ -381,6 +381,74 @@ app.get('/api/processes', async (req, res) => {
     }
 });
 
+// ===== Kill allowlist (safety)
+// By default, we only allow killing the detected Minecraft process (if any).
+// Optionally allow additional PIDs or process matches via env.
+function parseAllowedKillPids(raw) {
+    if (!raw) return [];
+    return String(raw)
+        .split(',')
+        .map((s) => s.trim())
+        .filter(Boolean)
+        .map((s) => Number(s))
+        .filter((n) => Number.isInteger(n) && n > 0);
+}
+
+function parseAllowedKillProcessMatch(raw) {
+    if (!raw) return [];
+    return String(raw)
+        .split(',')
+        .map((s) => s.trim())
+        .filter(Boolean);
+}
+
+function isMinecraftProcess(p) {
+    const name = (p?.name || '').toLowerCase();
+    const cmd = (p?.command || '').toLowerCase();
+
+    return (
+        (name.includes('java') && cmd.includes('minecraft')) ||
+        name.includes('minecraft') ||
+        cmd.includes('/home/beto/minecraft_n')
+    );
+}
+
+async function getDetectedMinecraftPid() {
+    try {
+        const processes = await si.processes();
+        const mcProc = processes.list.find(isMinecraftProcess);
+        return mcProc ? mcProc.pid : null;
+    } catch {
+        return null;
+    }
+}
+
+async function isKillPidAllowed(pid) {
+    // 1) Always allow the detected Minecraft PID (if found)
+    const mcPid = await getDetectedMinecraftPid();
+    if (mcPid && pid === mcPid) return { allowed: true, reason: 'minecraft' };
+
+    // 2) Explicit allowlist PIDs
+    const allowedPids = parseAllowedKillPids(process.env.ALLOWED_KILL_PIDS);
+    if (allowedPids.includes(pid)) return { allowed: true, reason: 'env:ALLOWED_KILL_PIDS' };
+
+    // 3) Optional allowlist by substring match (name/command)
+    const matchers = parseAllowedKillProcessMatch(process.env.ALLOWED_KILL_PROCESS_MATCH);
+    if (matchers.length > 0) {
+        try {
+            const processes = await si.processes();
+            const proc = processes.list.find((p) => p?.pid === pid);
+            const haystack = `${proc?.name || ''} ${(proc?.command || '')}`.toLowerCase();
+            const ok = matchers.some((m) => haystack.includes(String(m).toLowerCase()));
+            if (ok) return { allowed: true, reason: 'env:ALLOWED_KILL_PROCESS_MATCH' };
+        } catch {
+            // fall through
+        }
+    }
+
+    return { allowed: false, reason: 'not-allowlisted' };
+}
+
 // API: Kill process by PID
 app.post('/api/processes/:pid/kill', requireApiTokenIfConfigured, async (req, res) => {
     const pid = parseInt(req.params.pid);
@@ -391,6 +459,11 @@ app.post('/api/processes/:pid/kill', requireApiTokenIfConfigured, async (req, re
     }
 
     try {
+        const allow = await isKillPidAllowed(pid);
+        if (!allow.allowed) {
+            return res.status(403).json({ error: 'PID not allowed', pid });
+        }
+
         process.kill(pid, 'SIGTERM');
         res.json({ success: true, message: `Process ${pid} termination signal sent` });
     } catch (error) {
