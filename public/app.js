@@ -551,30 +551,65 @@ async function handleRestartProcess(pid) {
     }
 }
 
+async function safeParseJsonResponse(res) {
+    const contentType = (res.headers.get('content-type') || '').toLowerCase();
+    const text = await res.text();
+
+    if (contentType.includes('application/json')) {
+        try {
+            return JSON.parse(text);
+        } catch {
+            return { ok: false, error: 'Invalid JSON response', raw: text };
+        }
+    }
+
+    // Some upstream errors (e.g. nginx/502) return HTML.
+    return { ok: false, error: `Non-JSON response (HTTP ${res.status})`, raw: text };
+}
+
+async function pollMinecraftStatus({ timeoutMs = 65000, intervalMs = 2500 } = {}) {
+    const startedAt = Date.now();
+    while ((Date.now() - startedAt) < timeoutMs) {
+        try {
+            const res = await fetch(`${CONFIG.API_BASE}/api/services/minecraft/status`);
+            const data = await res.json();
+            if (data?.running) return true;
+        } catch {
+            // ignore transient errors while the server is booting
+        }
+        await new Promise((r) => setTimeout(r, intervalMs));
+    }
+    return false;
+}
+
 // Make startMinecraft global as it is used directly
 window.startMinecraft = async function () {
     const startBtn = document.getElementById('btn-start-mc');
     if (startBtn) {
         startBtn.disabled = true;
-        startBtn.textContent = '⏳ Starting...';
+        startBtn.textContent = '⏳ Starting... (this can take up to 1 minute)';
     }
 
     try {
         const res = await fetch(`${CONFIG.API_BASE}/api/services/minecraft/start`, { method: 'POST' });
-        const data = await res.json();
+        const parsed = await safeParseJsonResponse(res);
 
-        if (data.success) {
-            // Refresh modal so the button can be hidden once status flips to running.
-            setTimeout(openMemoryModal, 2500);
-            alert(data.message || 'Start command sent!');
+        // Even if the start endpoint errors (or returns HTML), the server might still be booting.
+        // Poll status and only show an error if it never comes up.
+        const isRunning = await pollMinecraftStatus();
+        if (isRunning) {
+            setTimeout(openMemoryModal, 500);
+            alert(parsed?.message || 'Minecraft is starting/started.');
             return;
         }
 
-        alert('Failed: ' + (data.error || 'Unknown error'));
+        const msg = parsed?.error || parsed?.message || 'Failed to start Minecraft';
+        alert(`Failed: ${msg}`);
     } catch (error) {
         alert('Error: ' + error.message);
     } finally {
         if (startBtn) {
+            // The modal refresh will hide the button when running.
             startBtn.disabled = false;
             startBtn.textContent = '▶️ Start Minecraft Server';
         }
