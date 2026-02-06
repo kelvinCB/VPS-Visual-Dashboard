@@ -722,6 +722,8 @@ body {
 
 /* ===== Memory Breakdown ===== */
 .memory-breakdown h3,
+.cpu-breakdown h3,
+.cpu-history h3,
 .processes-section h3 {
   font-size: 0.875rem;
   font-weight: 600;

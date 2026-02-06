@@ -72,8 +72,8 @@
 
     <!-- Main Metrics Grid -->
     <main class="metrics-grid">
-      <!-- CPU Usage Card -->
-      <article class="metric-card" id="cpu-card">
+      <!-- CPU Usage Card (Clickable) -->
+      <article class="metric-card clickable" id="cpu-card" title="Click for details" role="button" tabindex="0" aria-label="Open CPU details">
         <div class="metric-header">
           <span class="metric-title">CPU usage</span>
           <svg class="metric-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
@@ -95,6 +95,7 @@
         <div class="metric-chart">
           <canvas id="cpu-chart" width="280" height="60"></canvas>
         </div>
+        <span class="click-hint">Click for details</span>
       </article>
 
       <!-- Memory Usage Card (Clickable) -->
@@ -286,6 +287,71 @@
                 </tr>
               </thead>
               <tbody id="processes-tbody">
+                <tr>
+                  <td colspan="4">Loading...</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- CPU Details Modal -->
+  <div class="modal-overlay" id="cpu-modal">
+    <div class="modal" role="dialog" aria-modal="true" aria-labelledby="cpu-modal-title">
+      <div class="modal-header">
+        <h2 class="modal-title" id="cpu-modal-title">CPU Details</h2>
+        <button class="modal-close" id="cpu-modal-close" type="button" aria-label="Close">&times;</button>
+      </div>
+      <div class="modal-body">
+        <div class="cpu-breakdown">
+          <h3>CPU Breakdown</h3>
+          <div class="breakdown-grid">
+            <div class="breakdown-item">
+              <span class="breakdown-label">Overall</span>
+              <span class="breakdown-value" id="cpu-overall">-</span>
+            </div>
+            <div class="breakdown-item">
+              <span class="breakdown-label">Cores</span>
+              <span class="breakdown-value" id="cpu-cores">-</span>
+            </div>
+            <div class="breakdown-item">
+              <span class="breakdown-label">Load (1m)</span>
+              <span class="breakdown-value" id="cpu-load-1m">-</span>
+            </div>
+            <div class="breakdown-item">
+              <span class="breakdown-label">Load (5m)</span>
+              <span class="breakdown-value" id="cpu-load-5m">-</span>
+            </div>
+            <div class="breakdown-item">
+              <span class="breakdown-label">Load (15m)</span>
+              <span class="breakdown-value" id="cpu-load-15m">-</span>
+            </div>
+          </div>
+        </div>
+
+        <div class="cpu-history">
+          <h3>Recent CPU Usage</h3>
+          <div class="metric-chart" style="margin-top: 0.5rem;">
+            <canvas id="cpu-modal-chart" width="560" height="90"></canvas>
+          </div>
+        </div>
+
+        <div class="processes-section">
+          <h3>Top Processes by CPU</h3>
+          <div class="processes-table-container">
+            <table class="processes-table">
+              <thead>
+                <tr>
+                  <th>Process</th>
+                  <th>PID</th>
+                  <th>CPU %</th>
+                  <th>Mem %</th>
+                </tr>
+              </thead>
+              <tbody id="cpu-processes-tbody">
                 <tr>
                   <td colspan="4">Loading...</td>
                 </tr>

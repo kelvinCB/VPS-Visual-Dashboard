@@ -210,6 +210,53 @@ app.get('/api/metrics', async (req, res) => {
     }
 });
 
+// API: Get CPU details (per-core + load averages + top processes)
+app.get('/api/cpu/details', async (req, res) => {
+    try {
+        const [load, proc] = await Promise.all([
+            si.currentLoad(),
+            si.processes()
+        ]);
+
+        const perCore = Array.isArray(load?.cpus)
+            ? load.cpus.map((c, idx) => ({
+                core: idx,
+                load: Math.round(Number(c.load || 0) * 10) / 10
+            }))
+            : [];
+
+        const topProcesses = Array.isArray(proc?.list)
+            ? proc.list
+                .map(p => ({
+                    pid: p.pid,
+                    name: p.name || p.command || 'unknown',
+                    cpu: Math.round(Number(p.cpu || 0) * 10) / 10,
+                    mem: Math.round(Number(p.mem || 0) * 10) / 10
+                }))
+                .sort((a, b) => b.cpu - a.cpu)
+                .slice(0, 10)
+            : [];
+
+        const [l1, l5, l15] = os.loadavg();
+
+        res.json({
+            breakdown: {
+                overall: Math.round(Number(load?.currentLoad || 0) * 10) / 10,
+                cores: os.cpus().length,
+                loadAvg1m: Math.round(Number(l1 || 0) * 100) / 100,
+                loadAvg5m: Math.round(Number(l5 || 0) * 100) / 100,
+                loadAvg15m: Math.round(Number(l15 || 0) * 100) / 100
+            },
+            perCore,
+            topProcesses,
+            timestamp: new Date().toISOString()
+        });
+    } catch (error) {
+        console.error('Error getting CPU details:', error);
+        res.status(500).json({ error: 'Failed to get CPU details' });
+    }
+});
+
 // API: Get Disk details (filesystem list)
 app.get('/api/disk/details', async (req, res) => {
     try {

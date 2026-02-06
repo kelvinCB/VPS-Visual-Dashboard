@@ -453,6 +453,116 @@ async function fetchProcesses() {
     }
 }
 
+// Shared HTML escaping helper for modal tables
+function escapeHtml(str) {
+    if (!str) return '';
+    return String(str)
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#039;');
+}
+
+// CPU Details Modal
+const cpuModalElements = {
+    overlay: document.getElementById('cpu-modal'),
+    closeBtn: document.getElementById('cpu-modal-close'),
+    cpuCard: document.getElementById('cpu-card'),
+    overall: document.getElementById('cpu-overall'),
+    cores: document.getElementById('cpu-cores'),
+    load1m: document.getElementById('cpu-load-1m'),
+    load5m: document.getElementById('cpu-load-5m'),
+    load15m: document.getElementById('cpu-load-15m'),
+    chart: document.getElementById('cpu-modal-chart'),
+    processesTbody: document.getElementById('cpu-processes-tbody')
+};
+
+let cpuModalLastFocus = null;
+
+async function fetchCpuDetails() {
+    try {
+        const response = await fetch(`${CONFIG.API_BASE}/api/cpu/details`);
+        if (!response.ok) throw new Error('Failed to fetch CPU details');
+        return await response.json();
+    } catch (error) {
+        console.error('Error fetching CPU details:', error);
+        throw error;
+    }
+}
+
+function closeCpuModal() {
+    cpuModalElements.overlay?.classList.remove('active');
+
+    try {
+        const toFocus = cpuModalLastFocus || cpuModalElements.cpuCard;
+        toFocus?.focus?.();
+    } catch {
+        // ignore
+    } finally {
+        cpuModalLastFocus = null;
+    }
+}
+
+function sizeChartCanvas(canvas, heightCssPx = 90) {
+    if (!canvas) return;
+    const dpr = window.devicePixelRatio || 1;
+    const cssWidth = canvas.parentElement?.clientWidth || canvas.clientWidth || canvas.width || 560;
+
+    canvas.style.width = '100%';
+    canvas.style.height = `${heightCssPx}px`;
+    canvas.width = Math.max(1, Math.floor(cssWidth * dpr));
+    canvas.height = Math.max(1, Math.floor(heightCssPx * dpr));
+
+    const ctx = canvas.getContext('2d');
+    if (ctx) ctx.setTransform(1, 0, 0, 1, 0, 0);
+}
+
+async function openCpuModal() {
+    if (!cpuModalElements.overlay) return;
+
+    cpuModalLastFocus = document.activeElement;
+    cpuModalElements.overlay.classList.add('active');
+
+    cpuModalElements.closeBtn?.focus?.();
+    if (cpuModalElements.processesTbody) {
+        cpuModalElements.processesTbody.innerHTML = '<tr><td colspan="4">Loading...</td></tr>';
+    }
+
+    try {
+        const data = await fetchCpuDetails();
+
+        if (cpuModalElements.overall) cpuModalElements.overall.textContent = `${data.breakdown.overall}%`;
+        if (cpuModalElements.cores) cpuModalElements.cores.textContent = String(data.breakdown.cores);
+        if (cpuModalElements.load1m) cpuModalElements.load1m.textContent = String(data.breakdown.loadAvg1m);
+        if (cpuModalElements.load5m) cpuModalElements.load5m.textContent = String(data.breakdown.loadAvg5m);
+        if (cpuModalElements.load15m) cpuModalElements.load15m.textContent = String(data.breakdown.loadAvg15m);
+
+        if (cpuModalElements.chart) {
+            sizeChartCanvas(cpuModalElements.chart, 90);
+            drawLineChart(cpuModalElements.chart, state.cpuHistory, CONFIG.CHART_COLORS.cpu);
+        }
+
+        if (cpuModalElements.processesTbody) {
+            cpuModalElements.processesTbody.innerHTML = (data.topProcesses || [])
+                .map(proc => `
+                    <tr>
+                        <td>${escapeHtml(proc.name)}</td>
+                        <td>${proc.pid}</td>
+                        <td>${proc.cpu}</td>
+                        <td>${proc.mem}</td>
+                    </tr>
+                `)
+                .join('') || '<tr><td colspan="4">No data</td></tr>';
+        }
+    } catch (error) {
+        console.error(error);
+        if (cpuModalElements.processesTbody) {
+            cpuModalElements.processesTbody.innerHTML = '<tr><td colspan="4">Error loading data</td></tr>';
+        }
+    }
+}
+
 // Disk Details Modal
 const diskModalElements = {
     overlay: document.getElementById('disk-modal'),
@@ -494,7 +604,6 @@ async function openDiskModal() {
     diskModalLastFocus = document.activeElement;
     diskModalElements.overlay.classList.add('active');
 
-    // Best-effort focus for accessibility
     diskModalElements.closeBtn?.focus?.();
 
     if (diskModalElements.filesystemsTbody) {
@@ -507,16 +616,6 @@ async function openDiskModal() {
         if (diskModalElements.note) {
             diskModalElements.note.textContent = data.note || '';
         }
-
-        const escapeHtml = (str) => {
-            if (!str) return '';
-            return String(str)
-                .replace(/&/g, '&amp;')
-                .replace(/</g, '&lt;')
-                .replace(/>/g, '&gt;')
-                .replace(/"/g, '&quot;')
-                .replace(/'/g, '&#039;');
-        };
 
         if (diskModalElements.filesystemsTbody) {
             diskModalElements.filesystemsTbody.innerHTML = (data.filesystems || [])
@@ -778,6 +877,15 @@ function init() {
     // Memory card click handler (open modal)
     modalElements.memoryCard.addEventListener('click', openMemoryModal);
 
+    // CPU card click handler (open modal)
+    cpuModalElements.cpuCard?.addEventListener('click', openCpuModal);
+    cpuModalElements.cpuCard?.addEventListener('keydown', (e) => {
+        if (e.key === 'Enter' || e.key === ' ') {
+            e.preventDefault();
+            openCpuModal();
+        }
+    });
+
     // Disk card click handler (open modal)
     diskModalElements.diskCard?.addEventListener('click', openDiskModal);
     diskModalElements.diskCard?.addEventListener('keydown', (e) => {
@@ -843,6 +951,13 @@ function init() {
         }
     });
 
+    cpuModalElements.closeBtn?.addEventListener('click', closeCpuModal);
+    cpuModalElements.overlay?.addEventListener('click', (e) => {
+        if (e.target === cpuModalElements.overlay) {
+            closeCpuModal();
+        }
+    });
+
     diskModalElements.closeBtn?.addEventListener('click', closeDiskModal);
     diskModalElements.overlay?.addEventListener('click', (e) => {
         if (e.target === diskModalElements.overlay) {
@@ -856,6 +971,10 @@ function init() {
 
         if (modalElements.overlay.classList.contains('active')) {
             closeMemoryModal();
+        }
+
+        if (cpuModalElements.overlay?.classList.contains('active')) {
+            closeCpuModal();
         }
 
         if (diskModalElements.overlay?.classList.contains('active')) {
