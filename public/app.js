@@ -635,12 +635,22 @@ window.startMinecraft = async function () {
             return;
         }
 
+        const pollTimeoutMs = Number(CONFIG.MC_POLL_TIMEOUT_MS ?? 65000);
+
         // Even if the start endpoint errors (or returns HTML), the server might still be booting.
         // Poll status and only show an error if it never comes up.
-        const isRunning = await pollMinecraftStatus();
+        const isRunning = await pollMinecraftStatus({ timeoutMs: pollTimeoutMs });
         if (isRunning) {
             setTimeout(openMemoryModal, 500);
             alert(parsed?.message || 'Minecraft is starting/started.');
+            return;
+        }
+
+        // If the start endpoint returned success but status didn't flip within the polling window,
+        // treat it as "still starting" instead of "failed".
+        if (parsed?.success) {
+            setTimeout(openMemoryModal, 500);
+            alert(parsed?.message || 'Start command sent. Minecraft may still be starting...');
             return;
         }
 
@@ -649,6 +659,10 @@ window.startMinecraft = async function () {
     } catch (error) {
         alert('Error: ' + error.message);
     } finally {
+        // Always refresh once after the attempt so the Start button can disappear
+        // when the backend reports running.
+        setTimeout(openMemoryModal, 500);
+
         if (startBtn) {
             // The modal refresh will hide the button when running.
             startBtn.disabled = false;
