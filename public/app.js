@@ -453,6 +453,17 @@ async function fetchProcesses() {
     }
 }
 
+// Shared HTML escaping helper for modal tables
+function escapeHtml(str) {
+    if (!str) return '';
+    return String(str)
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#039;');
+}
+
 // CPU Details Modal
 const cpuModalElements = {
     overlay: document.getElementById('cpu-modal'),
@@ -496,7 +507,6 @@ function closeCpuModal() {
 function sizeChartCanvas(canvas, heightCssPx = 90) {
     if (!canvas) return;
     const dpr = window.devicePixelRatio || 1;
-    // Use the current rendered width; fall back to attribute width.
     const cssWidth = canvas.parentElement?.clientWidth || canvas.clientWidth || canvas.width || 560;
 
     canvas.style.width = '100%';
@@ -505,8 +515,6 @@ function sizeChartCanvas(canvas, heightCssPx = 90) {
     canvas.height = Math.max(1, Math.floor(heightCssPx * dpr));
 
     const ctx = canvas.getContext('2d');
-    // Keep the backing buffer scaled (width/height already account for DPR).
-    // Do NOT apply an additional transform here, since drawLineChart uses canvas.width/height.
     if (ctx) ctx.setTransform(1, 0, 0, 1, 0, 0);
 }
 
@@ -516,7 +524,6 @@ async function openCpuModal() {
     cpuModalLastFocus = document.activeElement;
     cpuModalElements.overlay.classList.add('active');
 
-    // Best-effort focus for accessibility
     cpuModalElements.closeBtn?.focus?.();
     if (cpuModalElements.processesTbody) {
         cpuModalElements.processesTbody.innerHTML = '<tr><td colspan="4">Loading...</td></tr>';
@@ -531,21 +538,10 @@ async function openCpuModal() {
         if (cpuModalElements.load5m) cpuModalElements.load5m.textContent = String(data.breakdown.loadAvg5m);
         if (cpuModalElements.load15m) cpuModalElements.load15m.textContent = String(data.breakdown.loadAvg15m);
 
-        // Recent chart uses the existing in-memory history
         if (cpuModalElements.chart) {
             sizeChartCanvas(cpuModalElements.chart, 90);
             drawLineChart(cpuModalElements.chart, state.cpuHistory, CONFIG.CHART_COLORS.cpu);
         }
-
-        const escapeHtml = (str) => {
-            if (!str) return '';
-            return String(str)
-                .replace(/&/g, '&amp;')
-                .replace(/</g, '&lt;')
-                .replace(/>/g, '&gt;')
-                .replace(/"/g, '&quot;')
-                .replace(/'/g, '&#039;');
-        };
 
         if (cpuModalElements.processesTbody) {
             cpuModalElements.processesTbody.innerHTML = (data.topProcesses || [])
@@ -563,6 +559,81 @@ async function openCpuModal() {
         console.error(error);
         if (cpuModalElements.processesTbody) {
             cpuModalElements.processesTbody.innerHTML = '<tr><td colspan="4">Error loading data</td></tr>';
+        }
+    }
+}
+
+// Disk Details Modal
+const diskModalElements = {
+    overlay: document.getElementById('disk-modal'),
+    closeBtn: document.getElementById('disk-modal-close'),
+    diskCard: document.getElementById('disk-card'),
+    filesystemsTbody: document.getElementById('disk-filesystems-tbody'),
+    note: document.getElementById('disk-note')
+};
+
+let diskModalLastFocus = null;
+
+async function fetchDiskDetails() {
+    try {
+        const response = await fetch(`${CONFIG.API_BASE}/api/disk/details`);
+        if (!response.ok) throw new Error('Failed to fetch disk details');
+        return await response.json();
+    } catch (error) {
+        console.error('Error fetching disk details:', error);
+        throw error;
+    }
+}
+
+function closeDiskModal() {
+    diskModalElements.overlay?.classList.remove('active');
+
+    try {
+        const toFocus = diskModalLastFocus || diskModalElements.diskCard;
+        toFocus?.focus?.();
+    } catch {
+        // ignore
+    } finally {
+        diskModalLastFocus = null;
+    }
+}
+
+async function openDiskModal() {
+    if (!diskModalElements.overlay) return;
+
+    diskModalLastFocus = document.activeElement;
+    diskModalElements.overlay.classList.add('active');
+
+    diskModalElements.closeBtn?.focus?.();
+
+    if (diskModalElements.filesystemsTbody) {
+        diskModalElements.filesystemsTbody.innerHTML = '<tr><td colspan="5">Loading...</td></tr>';
+    }
+
+    try {
+        const data = await fetchDiskDetails();
+
+        if (diskModalElements.note) {
+            diskModalElements.note.textContent = data.note || '';
+        }
+
+        if (diskModalElements.filesystemsTbody) {
+            diskModalElements.filesystemsTbody.innerHTML = (data.filesystems || [])
+                .map(fs => `
+                    <tr>
+                        <td>${escapeHtml(fs.mount || fs.fs || '-')}</td>
+                        <td>${escapeHtml(fs.size)}</td>
+                        <td>${escapeHtml(fs.used)}</td>
+                        <td>${escapeHtml(fs.avail)}</td>
+                        <td>${escapeHtml(fs.usePercent)}%</td>
+                    </tr>
+                `)
+                .join('') || '<tr><td colspan="5">No data</td></tr>';
+        }
+    } catch (error) {
+        console.error(error);
+        if (diskModalElements.filesystemsTbody) {
+            diskModalElements.filesystemsTbody.innerHTML = '<tr><td colspan="5">Error loading data</td></tr>';
         }
     }
 }
@@ -749,12 +820,22 @@ window.startMinecraft = async function () {
             return;
         }
 
+        const pollTimeoutMs = Number(CONFIG.MC_POLL_TIMEOUT_MS ?? 65000);
+
         // Even if the start endpoint errors (or returns HTML), the server might still be booting.
         // Poll status and only show an error if it never comes up.
-        const isRunning = await pollMinecraftStatus();
+        const isRunning = await pollMinecraftStatus({ timeoutMs: pollTimeoutMs });
         if (isRunning) {
             setTimeout(openMemoryModal, 500);
             alert(parsed?.message || 'Minecraft is starting/started.');
+            return;
+        }
+
+        // If the start endpoint returned success but status didn't flip within the polling window,
+        // treat it as "still starting" instead of "failed".
+        if (parsed?.success) {
+            setTimeout(openMemoryModal, 500);
+            alert(parsed?.message || 'Start command sent. Minecraft may still be starting...');
             return;
         }
 
@@ -763,6 +844,10 @@ window.startMinecraft = async function () {
     } catch (error) {
         alert('Error: ' + error.message);
     } finally {
+        // Always refresh once after the attempt so the Start button can disappear
+        // when the backend reports running.
+        setTimeout(openMemoryModal, 500);
+
         if (startBtn) {
             // The modal refresh will hide the button when running.
             startBtn.disabled = false;
@@ -798,6 +883,15 @@ function init() {
         if (e.key === 'Enter' || e.key === ' ') {
             e.preventDefault();
             openCpuModal();
+        }
+    });
+
+    // Disk card click handler (open modal)
+    diskModalElements.diskCard?.addEventListener('click', openDiskModal);
+    diskModalElements.diskCard?.addEventListener('keydown', (e) => {
+        if (e.key === 'Enter' || e.key === ' ') {
+            e.preventDefault();
+            openDiskModal();
         }
     });
 
@@ -864,6 +958,13 @@ function init() {
         }
     });
 
+    diskModalElements.closeBtn?.addEventListener('click', closeDiskModal);
+    diskModalElements.overlay?.addEventListener('click', (e) => {
+        if (e.target === diskModalElements.overlay) {
+            closeDiskModal();
+        }
+    });
+
     // Close modal on Escape key
     document.addEventListener('keydown', (e) => {
         if (e.key !== 'Escape') return;
@@ -874,6 +975,10 @@ function init() {
 
         if (cpuModalElements.overlay?.classList.contains('active')) {
             closeCpuModal();
+        }
+
+        if (diskModalElements.overlay?.classList.contains('active')) {
+            closeDiskModal();
         }
     });
 
