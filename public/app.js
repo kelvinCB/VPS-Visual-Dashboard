@@ -725,7 +725,7 @@ async function openMemoryModal() {
         if (mcStartState.starting) {
             startBtn.style.display = 'block';
             startBtn.disabled = true;
-            startBtn.textContent = '⏳ Starting…';
+            startBtn.textContent = formatStartingLabel();
             scheduleMinecraftStartLoop();
         } else {
             startBtn.disabled = false;
@@ -798,13 +798,17 @@ async function safeParseJsonResponse(res) {
 
 // ===== Minecraft start UX (no manual refresh) =====
 const MC_STARTING_REFRESH_MS = 5000;
+const MC_STARTING_LABEL_TICK_MS = 1000;
 const MC_STARTING_TIMEOUT_MS = 180000; // 3 minutes
+const MC_STARTING_HINT = 'This can take up to 1 min';
 
 const mcStartState = {
     starting: false,
     startedAt: 0,
+    elapsedSec: 0,
     timedOut: false,
-    loopTimer: null
+    statusTimer: null,
+    labelTimer: null
 };
 
 function getMcStartBtn() {
@@ -821,30 +825,51 @@ function setMcStartButtonState({ visible, disabled, label } = {}) {
 }
 
 function clearMcStartLoop() {
-    if (mcStartState.loopTimer) {
-        clearTimeout(mcStartState.loopTimer);
-        mcStartState.loopTimer = null;
+    if (mcStartState.statusTimer) {
+        clearTimeout(mcStartState.statusTimer);
+        mcStartState.statusTimer = null;
+    }
+    if (mcStartState.labelTimer) {
+        clearTimeout(mcStartState.labelTimer);
+        mcStartState.labelTimer = null;
     }
 }
 
 function markMcStarting() {
     mcStartState.starting = true;
     mcStartState.startedAt = Date.now();
+    mcStartState.elapsedSec = 0;
     mcStartState.timedOut = false;
 }
 
 function markMcNotStarting({ timedOut = false } = {}) {
     mcStartState.starting = false;
     mcStartState.startedAt = 0;
+    mcStartState.elapsedSec = 0;
     mcStartState.timedOut = timedOut;
     clearMcStartLoop();
+}
+
+function getStartingElapsedMs() {
+    return mcStartState.startedAt ? (Date.now() - mcStartState.startedAt) : 0;
+}
+
+function getStartingFrameIcon() {
+    // Simple 2-frame "animation" that flips every second.
+    return (mcStartState.elapsedSec % 2 === 0) ? '⏳' : '⌛';
+}
+
+function formatStartingLabel() {
+    const sec = Math.max(0, Number(mcStartState.elapsedSec) || 0);
+    const icon = getStartingFrameIcon();
+    return `${icon} Starting… ${sec}s (${MC_STARTING_HINT})`;
 }
 
 async function refreshMinecraftStartUI() {
     // Only care while the memory modal is open.
     if (!modalElements?.overlay?.classList?.contains('active')) return;
 
-    const elapsed = mcStartState.startedAt ? (Date.now() - mcStartState.startedAt) : 0;
+    const elapsed = getStartingElapsedMs();
 
     // Timeout path: allow retry without calling it a failure.
     if (mcStartState.starting && elapsed >= MC_STARTING_TIMEOUT_MS) {
@@ -865,7 +890,7 @@ async function refreshMinecraftStartUI() {
 
         // Not running
         if (mcStartState.starting) {
-            setMcStartButtonState({ visible: true, disabled: true, label: '⏳ Starting…' });
+            setMcStartButtonState({ visible: true, disabled: true, label: formatStartingLabel() });
         } else {
             const label = mcStartState.timedOut ? '↻ Retry start' : '▶️ Start Minecraft Server';
             setMcStartButtonState({ visible: true, disabled: false, label });
@@ -873,31 +898,56 @@ async function refreshMinecraftStartUI() {
     } catch {
         // Ignore transient status errors while booting.
         if (mcStartState.starting) {
-            setMcStartButtonState({ visible: true, disabled: true, label: '⏳ Starting…' });
+            setMcStartButtonState({ visible: true, disabled: true, label: formatStartingLabel() });
         }
     }
+}
+
+function scheduleMinecraftStartingLabelTick() {
+    const tick = () => {
+        if (!mcStartState.starting) return;
+
+        // Prefer wall-clock elapsed, but fall back to ticking when timers are throttled.
+        const wall = Math.floor(getStartingElapsedMs() / 1000);
+        if (Number.isFinite(wall) && wall >= 0) {
+            mcStartState.elapsedSec = wall;
+        } else {
+            mcStartState.elapsedSec = (Number(mcStartState.elapsedSec) || 0) + 1;
+        }
+
+        // Update label even if status polling is slower.
+        setMcStartButtonState({ visible: true, disabled: true, label: formatStartingLabel() });
+        mcStartState.labelTimer = setTimeout(tick, MC_STARTING_LABEL_TICK_MS);
+    };
+
+    // Start immediately.
+    mcStartState.labelTimer = setTimeout(tick, 0);
 }
 
 function scheduleMinecraftStartLoop() {
     clearMcStartLoop();
 
+    // Label tick (1s) for countdown + icon animation.
+    scheduleMinecraftStartingLabelTick();
+
+    // Status polling (5s)
     const tick = async () => {
         await refreshMinecraftStartUI();
 
         // Keep looping only while we're still in the starting window.
         if (!mcStartState.starting) return;
 
-        mcStartState.loopTimer = setTimeout(tick, MC_STARTING_REFRESH_MS);
+        mcStartState.statusTimer = setTimeout(tick, MC_STARTING_REFRESH_MS);
     };
 
-    mcStartState.loopTimer = setTimeout(tick, 0);
+    mcStartState.statusTimer = setTimeout(tick, 0);
 }
 
 // Make startMinecraft global as it is used directly
 window.startMinecraft = async function () {
     // Lock immediately to prevent double-click.
     markMcStarting();
-    setMcStartButtonState({ visible: true, disabled: true, label: '⏳ Starting…' });
+    setMcStartButtonState({ visible: true, disabled: true, label: formatStartingLabel() });
 
     // Start UI loop (only updates while the modal is open)
     scheduleMinecraftStartLoop();

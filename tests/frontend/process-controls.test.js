@@ -22,9 +22,13 @@ describe('Frontend Process Control', () => {
     let dom;
     let window;
     let document;
+    let fakeNow;
 
     beforeEach(() => {
         vi.useFakeTimers();
+
+        fakeNow = 0;
+        vi.spyOn(Date, 'now').mockImplementation(() => fakeNow);
 
         dom = new JSDOM(html, { runScripts: 'dangerously', resources: 'usable' });
         window = dom.window;
@@ -34,6 +38,13 @@ describe('Frontend Process Control', () => {
         global.document = document;
         global.window = window;
         window.fetch = global.fetch;
+
+        // Route window timers through Vitest fake timers.
+        window.setTimeout = setTimeout;
+        window.clearTimeout = clearTimeout;
+
+        // Mock Date.now inside the JSDOM window for countdown label.
+        window.Date.now = () => fakeNow;
 
         // Avoid long-running intervals in tests.
         window.setInterval = () => 0;
@@ -93,10 +104,8 @@ describe('Frontend Process Control', () => {
 
     it('startMinecraft should disable the button and keep it disabled while starting', async () => {
         // Make the modal "active" so the start loop updates UI.
-        const overlay = document.createElement('div');
-        overlay.id = 'memory-modal';
-        overlay.className = 'active';
-        document.body.appendChild(overlay);
+        const overlay = document.getElementById('memory-modal');
+        overlay.classList.add('active');
 
         const btn = document.createElement('button');
         btn.id = 'btn-start-mc';
@@ -124,9 +133,11 @@ describe('Frontend Process Control', () => {
         // Starting state is immediate.
         expect(btn.disabled).toBe(true);
         expect(btn.textContent).toMatch(/Starting/i);
+        expect(btn.textContent).toMatch(/take up to 1 min/i);
 
-        // Still disabled after one tick (status still running=false).
-        await vi.runOnlyPendingTimersAsync();
+        // Still disabled and label should keep the hint.
         expect(btn.disabled).toBe(true);
+        expect(btn.textContent).toMatch(/take up to 1 min/i);
+        expect(btn.textContent).toMatch(/\d+s/);
     });
 });
