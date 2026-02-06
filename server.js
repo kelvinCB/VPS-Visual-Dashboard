@@ -325,15 +325,23 @@ app.get('/api/system', async (req, res) => {
 // ===== Process helpers (Minecraft)
 const DEFAULT_MC_PORT = Number(process.env.MC_PORT || 25565);
 
+function getMinecraftListenHost() {
+    // Default remains loopback-only for safety.
+    // Override when the Minecraft server is bound to a different interface.
+    return process.env.MC_LISTEN_HOST || process.env.MC_BIND_HOST || '127.0.0.1';
+}
+
 function sleep(ms) {
     return new Promise((r) => setTimeout(r, ms));
 }
 
-async function isPortListening(port = DEFAULT_MC_PORT, host = '127.0.0.1') {
+async function isPortListening(port = DEFAULT_MC_PORT, host, SocketCtor = net.Socket) {
+    const resolvedHost = host || getMinecraftListenHost();
+
     // Portable check: attempt a TCP connection.
     // Note: this only confirms a listener is accepting connections on that host/port.
     return await new Promise((resolve) => {
-        const socket = new net.Socket();
+        const socket = new SocketCtor();
         const timeoutMs = 350;
 
         const done = (ok) => {
@@ -347,7 +355,7 @@ async function isPortListening(port = DEFAULT_MC_PORT, host = '127.0.0.1') {
         socket.once('error', () => done(false));
 
         try {
-            socket.connect(port, host);
+            socket.connect(port, resolvedHost);
         } catch {
             done(false);
         }
@@ -620,7 +628,8 @@ app.get('/api/services/minecraft/status', async (req, res) => {
         );
 
         const port = Number(process.env.MC_PORT || DEFAULT_MC_PORT);
-        const listening = await isPortListening(port);
+        const host = getMinecraftListenHost();
+        const listening = await isPortListening(port, host);
 
         // If we are listening but couldn't heuristically identify the process,
         // try to resolve the PID via the listening socket.
@@ -630,6 +639,7 @@ app.get('/api/services/minecraft/status', async (req, res) => {
             success: true,
             running: Boolean(mcProc) || listening,
             listening,
+            host,
             port,
             pid: mcProc?.pid || listeningPid || null,
             timestamp: new Date().toISOString()
@@ -644,12 +654,13 @@ app.get('/api/services/minecraft/status', async (req, res) => {
 app.post('/api/services/minecraft/start', requireApiTokenIfConfigured, async (req, res) => {
     const startCommand = process.env.MC_START_COMMAND || 'echo "MC_START_COMMAND not configured" >> /tmp/mc_start_log.txt';
     const port = Number(process.env.MC_PORT || DEFAULT_MC_PORT);
+    const host = getMinecraftListenHost();
     const logPath = process.env.MC_LOG_PATH || '/home/beto/minecraft_n/server-start.log';
 
     try {
         // If already running, do nothing.
-        if (await isPortListening(port)) {
-            return res.json({ success: true, message: `Minecraft already running (port ${port} listening)` });
+        if (await isPortListening(port, host)) {
+            return res.json({ success: true, message: `Minecraft already running (host ${host} port ${port} listening)` });
         }
 
         console.log(`Starting Minecraft with command: ${startCommand}`);
@@ -664,15 +675,16 @@ app.post('/api/services/minecraft/start', requireApiTokenIfConfigured, async (re
             const intervalMs = 1000;
             const startedAt = Date.now();
             while ((Date.now() - startedAt) < maxWaitMs) {
-                if (await isPortListening(port)) {
-                    return res.json({ success: true, message: `Minecraft started (port ${port} listening)` });
+                if (await isPortListening(port, host)) {
+                    return res.json({ success: true, message: `Minecraft started (host ${host} port ${port} listening)` });
                 }
                 await sleep(intervalMs);
             }
 
             const tail = tailFile(logPath, 120);
             return res.status(500).json({
-                error: `Minecraft did not start (port ${port} not listening after ${maxWaitMs}ms)`,
+                error: `Minecraft did not start (host ${host} port ${port} not listening after ${maxWaitMs}ms)`,
+                host,
                 logTail: tail
             });
         }
@@ -732,4 +744,13 @@ if (require.main === module) {
 }
 
 // Export for testing
-module.exports = { app, formatBytes, formatUptime, monthKey, updateMonthlyBandwidth };
+module.exports = {
+    app,
+    formatBytes,
+    formatUptime,
+    monthKey,
+    updateMonthlyBandwidth,
+    // Exported for testing
+    getMinecraftListenHost,
+    isPortListening
+};
