@@ -362,17 +362,21 @@ app.get('/api/processes', async (req, res) => {
             swapFree: formatBytes(mem.swapfree || 0)
         };
 
-        // Check if Minecraft is running and get its PID
+        // Check if Minecraft is running and get its PID (heuristics + port fallback)
         const mcProc = processes.list.find(p =>
             p.name.includes('java') && (p.command || '').includes('minecraft') ||
             p.name.includes('minecraft')
         );
 
+        const port = Number(process.env.MC_PORT || DEFAULT_MC_PORT);
+        const listeningPid = await getPidListeningOnPort(port);
+        const minecraftPid = mcProc?.pid || listeningPid || null;
+
         res.json({
             breakdown: memoryBreakdown,
             processes: topProcesses,
-            isMinecraftRunning: !!mcProc,
-            minecraftPid: mcProc ? mcProc.pid : null, // EXPOSE PID HERE
+            isMinecraftRunning: Boolean(mcProc) || Boolean(listeningPid),
+            minecraftPid, // EXPOSE PID HERE
             timestamp: new Date().toISOString()
         });
     } catch (error) {
@@ -413,11 +417,62 @@ function isMinecraftProcess(p) {
     );
 }
 
+async function getPidListeningOnPort(port) {
+    const p = Number(port);
+    if (!Number.isInteger(p) || p <= 0) return null;
+
+    // Prefer lsof if available.
+    // Example: lsof -nP -iTCP:25565 -sTCP:LISTEN -t
+    const lsofCmd = `lsof -nP -iTCP:${p} -sTCP:LISTEN -t`;
+
+    const execCmd = (cmd) => new Promise((resolve, reject) => {
+        cp.exec(cmd, { timeout: 2000 }, (err, stdout) => {
+            if (err) return reject(err);
+            resolve(String(stdout || '').trim());
+        });
+    });
+
+    try {
+        const out = await execCmd(lsofCmd);
+        const first = String(out).split(/\s+/).filter(Boolean)[0];
+        const pid = Number(first);
+        if (Number.isInteger(pid) && pid > 0) return pid;
+    } catch {
+        // fall through
+    }
+
+    // Fallback: ss (Linux)
+    // Example line contains: users:(("java",pid=1234,fd=...))
+    const ssCmd = `ss -ltnp '( sport = :${p} )'`;
+    try {
+        const out = await execCmd(ssCmd);
+        const m = String(out).match(/pid=(\d+)/);
+        if (m) {
+            const pid = Number(m[1]);
+            if (Number.isInteger(pid) && pid > 0) return pid;
+        }
+    } catch {
+        // ignore
+    }
+
+    return null;
+}
+
 async function getDetectedMinecraftPid() {
     try {
         const processes = await si.processes();
         const mcProc = processes.list.find(isMinecraftProcess);
-        return mcProc ? mcProc.pid : null;
+        if (mcProc?.pid) return mcProc.pid;
+    } catch {
+        // ignore
+    }
+
+    // Fallback: if port is listening but process list heuristics didn't match,
+    // find the PID that owns the listening socket.
+    try {
+        const port = Number(process.env.MC_PORT || DEFAULT_MC_PORT);
+        const pid = await getPidListeningOnPort(port);
+        return pid || null;
     } catch {
         return null;
     }
@@ -485,12 +540,16 @@ app.get('/api/services/minecraft/status', async (req, res) => {
         const port = Number(process.env.MC_PORT || DEFAULT_MC_PORT);
         const listening = await isPortListening(port);
 
+        // If we are listening but couldn't heuristically identify the process,
+        // try to resolve the PID via the listening socket.
+        const listeningPid = listening ? await getPidListeningOnPort(port) : null;
+
         res.json({
             success: true,
             running: Boolean(mcProc) || listening,
             listening,
             port,
-            pid: mcProc ? mcProc.pid : null,
+            pid: mcProc?.pid || listeningPid || null,
             timestamp: new Date().toISOString()
         });
     } catch (error) {
