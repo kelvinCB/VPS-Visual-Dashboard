@@ -524,7 +524,7 @@ async function getPidListeningOnPort(port) {
 
     try {
         const out = await execCmd(lsofCmd);
-        const first = String(out).split(/\s+/).filter(Boolean)[0];
+        const first = String(out).split(/s+/).filter(Boolean)[0];
         const pid = Number(first);
         if (Number.isInteger(pid) && pid > 0) return pid;
     } catch {
@@ -536,7 +536,7 @@ async function getPidListeningOnPort(port) {
     const ssCmd = `ss -ltnp '( sport = :${p} )'`;
     try {
         const out = await execCmd(ssCmd);
-        const m = String(out).match(/pid=(\d+)/);
+        const m = String(out).match(/pid=(d+)/);
         if (m) {
             const pid = Number(m[1]);
             if (Number.isInteger(pid) && pid > 0) return pid;
@@ -547,6 +547,42 @@ async function getPidListeningOnPort(port) {
 
     return null;
 }
+
+function parseMinecraftProcessMatchers(raw) {
+    // Optional override for Minecraft detection used by status/start verification.
+    // Format: comma-separated substrings.
+    // Example: MC_PROCESS_MATCH="java,minecraft,forge"
+    if (!raw) return [];
+    return String(raw)
+        .split(',')
+        .map((s) => s.trim())
+        .filter(Boolean);
+}
+
+function detectMinecraftProcess(processList = []) {
+    const matchers = parseMinecraftProcessMatchers(process.env.MC_PROCESS_MATCH);
+
+    if (matchers.length > 0) {
+        const mcProc = processList.find((p) => {
+            const haystack = `${p?.name || ''} ${p?.command || ''}`.toLowerCase();
+            return matchers.some((m) => haystack.includes(String(m).toLowerCase()));
+        });
+
+        return {
+            matched: Boolean(mcProc),
+            pid: mcProc ? mcProc.pid : null,
+            reason: mcProc ? 'env:MC_PROCESS_MATCH' : 'env:MC_PROCESS_MATCH:no-match'
+        };
+    }
+
+    const mcProc = processList.find(isMinecraftProcess);
+    return {
+        matched: Boolean(mcProc),
+        pid: mcProc ? mcProc.pid : null,
+        reason: mcProc ? 'default' : 'default:no-match'
+    };
+}
+
 
 async function getDetectedMinecraftPid() {
     try {
@@ -621,27 +657,29 @@ app.post('/api/processes/:pid/kill', requireApiTokenIfConfigured, async (req, re
 app.get('/api/services/minecraft/status', async (req, res) => {
     try {
         const processes = await si.processes();
-        const mcProc = processes.list.find(p =>
-            (p.name.includes('java') && (p.command || '').includes('minecraft')) ||
-            p.name.includes('minecraft') ||
-            (p.command || '').includes('/home/beto/minecraft_n')
-        );
-
         const port = Number(process.env.MC_PORT || DEFAULT_MC_PORT);
         const host = getMinecraftListenHost();
         const listening = await isPortListening(port, host);
+        const proc = detectMinecraftProcess(processes.list);
 
-        // If we are listening but couldn't heuristically identify the process,
-        // try to resolve the PID via the listening socket.
-        const listeningPid = listening ? await getPidListeningOnPort(port) : null;
+        // Avoid false-positives: a port listener alone is not enough to claim "running".
+        const running = Boolean(listening && proc.matched);
+
+        // If we are listening but couldn't identify the process, try to resolve the PID via the socket owner.
+        const listeningPid = listening && !proc.matched ? await getPidListeningOnPort(port) : null;
 
         res.json({
             success: true,
-            running: Boolean(mcProc) || listening,
+            running,
             listening,
             host,
             port,
-            pid: mcProc?.pid || listeningPid || null,
+            pid: proc.pid || listeningPid || null,
+            processMatched: proc.matched,
+            reasons: {
+                running: running ? 'listening+process-match' : (!listening && proc.matched ? 'process-match-but-not-listening' : (listening ? 'listening-without-process-match' : 'not-listening')),
+                process: proc.reason
+            },
             timestamp: new Date().toISOString()
         });
     } catch (error) {
@@ -659,8 +697,19 @@ app.post('/api/services/minecraft/start', requireApiTokenIfConfigured, async (re
 
     try {
         // If already running, do nothing.
-        if (await isPortListening(port, host)) {
-            return res.json({ success: true, message: `Minecraft already running (host ${host} port ${port} listening)` });
+        const processes = await si.processes();
+        const listening = await isPortListening(port, host);
+        const proc = detectMinecraftProcess(processes.list);
+
+        if (listening && proc.matched) {
+            return res.json({
+                success: true,
+                message: `Minecraft already running (host ${host} port ${port} listening + process matched)`,
+                running: true,
+                listening,
+                processMatched: true,
+                pid: proc.pid
+            });
         }
 
         console.log(`Starting Minecraft with command: ${startCommand}`);
@@ -675,16 +724,37 @@ app.post('/api/services/minecraft/start', requireApiTokenIfConfigured, async (re
             const intervalMs = 1000;
             const startedAt = Date.now();
             while ((Date.now() - startedAt) < maxWaitMs) {
-                if (await isPortListening(port, host)) {
-                    return res.json({ success: true, message: `Minecraft started (host ${host} port ${port} listening)` });
+                const nowListening = await isPortListening(port, host);
+                if (nowListening) {
+                    const nowProcs = await si.processes();
+                    const nowProc = detectMinecraftProcess(nowProcs.list);
+                    if (nowProc.matched) {
+                        return res.json({
+                            success: true,
+                            message: `Minecraft started (host ${host} port ${port} listening + process matched)`,
+                            running: true,
+                            listening: true,
+                            processMatched: true,
+                            pid: nowProc.pid
+                        });
+                    }
                 }
                 await sleep(intervalMs);
+
             }
 
             const tail = tailFile(logPath, 120);
+            const lastProcs = await si.processes().catch(() => ({ list: [] }));
+            const lastProc = detectMinecraftProcess(lastProcs.list);
+
             return res.status(500).json({
-                error: `Minecraft did not start (host ${host} port ${port} not listening after ${maxWaitMs}ms)`,
+                error: `Minecraft did not start (host ${host} port ${port} listening + process match) after ${maxWaitMs}ms`,
                 host,
+                port,
+                listening: false,
+                processMatched: lastProc.matched,
+                pid: lastProc.pid,
+                reasons: { process: lastProc.reason },
                 logTail: tail
             });
         }
@@ -752,5 +822,9 @@ module.exports = {
     updateMonthlyBandwidth,
     // Exported for testing
     getMinecraftListenHost,
-    isPortListening
+    isPortListening,
+    getPidListeningOnPort,
+    detectMinecraftProcess,
+    parseMinecraftProcessMatchers,
+    isMinecraftProcess
 };
