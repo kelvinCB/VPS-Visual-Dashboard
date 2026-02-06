@@ -718,7 +718,19 @@ async function openMemoryModal() {
             document.querySelector('.modal-body').appendChild(startBtn);
         }
 
+        // Default visibility based on actual server status.
         startBtn.style.display = status?.running ? 'none' : 'block';
+
+        // Apply client-side starting UX state.
+        if (mcStartState.starting) {
+            startBtn.style.display = 'block';
+            startBtn.disabled = true;
+            startBtn.textContent = '⏳ Starting…';
+            scheduleMinecraftStartLoop();
+        } else {
+            startBtn.disabled = false;
+            startBtn.textContent = mcStartState.timedOut ? '↻ Retry start' : '▶️ Start Minecraft Server';
+        }
 
     } catch (error) {
         console.error(error);
@@ -784,80 +796,140 @@ async function safeParseJsonResponse(res) {
     return { ok: false, error: `Non-JSON response (HTTP ${res.status})`, raw: text };
 }
 
-async function pollMinecraftStatus({ timeoutMs = 65000, intervalMs = 2500 } = {}) {
-    const startedAt = Date.now();
-    while ((Date.now() - startedAt) < timeoutMs) {
-        try {
-            const res = await fetch(`${CONFIG.API_BASE}/api/services/minecraft/status`);
-            const data = await res.json();
-            if (data?.running) return true;
-        } catch {
-            // ignore transient errors while the server is booting
-        }
-        await new Promise((r) => setTimeout(r, intervalMs));
+// ===== Minecraft start UX (no manual refresh) =====
+const MC_STARTING_REFRESH_MS = 5000;
+const MC_STARTING_TIMEOUT_MS = 180000; // 3 minutes
+
+const mcStartState = {
+    starting: false,
+    startedAt: 0,
+    timedOut: false,
+    loopTimer: null
+};
+
+function getMcStartBtn() {
+    return document.getElementById('btn-start-mc');
+}
+
+function setMcStartButtonState({ visible, disabled, label } = {}) {
+    const btn = getMcStartBtn();
+    if (!btn) return;
+
+    if (typeof visible === 'boolean') btn.style.display = visible ? 'block' : 'none';
+    if (typeof disabled === 'boolean') btn.disabled = disabled;
+    if (typeof label === 'string') btn.textContent = label;
+}
+
+function clearMcStartLoop() {
+    if (mcStartState.loopTimer) {
+        clearTimeout(mcStartState.loopTimer);
+        mcStartState.loopTimer = null;
     }
-    return false;
+}
+
+function markMcStarting() {
+    mcStartState.starting = true;
+    mcStartState.startedAt = Date.now();
+    mcStartState.timedOut = false;
+}
+
+function markMcNotStarting({ timedOut = false } = {}) {
+    mcStartState.starting = false;
+    mcStartState.startedAt = 0;
+    mcStartState.timedOut = timedOut;
+    clearMcStartLoop();
+}
+
+async function refreshMinecraftStartUI() {
+    // Only care while the memory modal is open.
+    if (!modalElements?.overlay?.classList?.contains('active')) return;
+
+    const elapsed = mcStartState.startedAt ? (Date.now() - mcStartState.startedAt) : 0;
+
+    // Timeout path: allow retry without calling it a failure.
+    if (mcStartState.starting && elapsed >= MC_STARTING_TIMEOUT_MS) {
+        markMcNotStarting({ timedOut: true });
+        setMcStartButtonState({ visible: true, disabled: false, label: '↻ Retry start' });
+        return;
+    }
+
+    try {
+        const res = await fetch(`${CONFIG.API_BASE}/api/services/minecraft/status`);
+        const data = await res.json().catch(() => ({}));
+
+        if (data?.running) {
+            markMcNotStarting({ timedOut: false });
+            setMcStartButtonState({ visible: false });
+            return;
+        }
+
+        // Not running
+        if (mcStartState.starting) {
+            setMcStartButtonState({ visible: true, disabled: true, label: '⏳ Starting…' });
+        } else {
+            const label = mcStartState.timedOut ? '↻ Retry start' : '▶️ Start Minecraft Server';
+            setMcStartButtonState({ visible: true, disabled: false, label });
+        }
+    } catch {
+        // Ignore transient status errors while booting.
+        if (mcStartState.starting) {
+            setMcStartButtonState({ visible: true, disabled: true, label: '⏳ Starting…' });
+        }
+    }
+}
+
+function scheduleMinecraftStartLoop() {
+    clearMcStartLoop();
+
+    const tick = async () => {
+        await refreshMinecraftStartUI();
+
+        // Keep looping only while we're still in the starting window.
+        if (!mcStartState.starting) return;
+
+        mcStartState.loopTimer = setTimeout(tick, MC_STARTING_REFRESH_MS);
+    };
+
+    mcStartState.loopTimer = setTimeout(tick, 0);
 }
 
 // Make startMinecraft global as it is used directly
 window.startMinecraft = async function () {
-    const startBtn = document.getElementById('btn-start-mc');
-    if (startBtn) {
-        startBtn.disabled = true;
-        startBtn.textContent = '⏳ Starting... (this can take up to 1 minute)';
-    }
+    // Lock immediately to prevent double-click.
+    markMcStarting();
+    setMcStartButtonState({ visible: true, disabled: true, label: '⏳ Starting…' });
+
+    // Start UI loop (only updates while the modal is open)
+    scheduleMinecraftStartLoop();
 
     try {
         const res = await fetch(`${CONFIG.API_BASE}/api/services/minecraft/start`, {
             method: 'POST',
             headers: { ...getAuthHeaders() }
         });
-        const parsed = await safeParseJsonResponse(res);
 
-        // If auth is enabled and token is missing/invalid, do NOT poll.
+        // If auth is enabled and token is missing/invalid, stop the starting state.
         if (res.status === 401 || res.status === 403) {
+            markMcNotStarting({ timedOut: false });
+            setMcStartButtonState({ visible: true, disabled: false, label: '▶️ Start Minecraft Server' });
             alert('Unauthorized. Please set your API token and try again.');
             return;
         }
 
-        const pollTimeoutMs = Number(CONFIG.MC_POLL_TIMEOUT_MS ?? 65000);
-
-        // Even if the start endpoint errors (or returns HTML), the server might still be booting.
-        // Poll status and only show an error if it never comes up.
-        const isRunning = await pollMinecraftStatus({ timeoutMs: pollTimeoutMs });
-        if (isRunning) {
-            setTimeout(openMemoryModal, 500);
-            alert(parsed?.message || 'Minecraft is starting/started.');
-            return;
-        }
-
-        // If the start endpoint returned success but status didn't flip within the polling window,
-        // treat it as "still starting" instead of "failed".
-        if (parsed?.success) {
-            setTimeout(openMemoryModal, 500);
-            alert(parsed?.message || 'Start command sent. Minecraft may still be starting...');
-            return;
-        }
-
-        const msg = parsed?.error || parsed?.message || 'Failed to start Minecraft';
-        alert(`Failed: ${msg}`);
+        // Do not show errors here; the status polling decides when to allow retry.
+        await safeParseJsonResponse(res).catch(() => null);
     } catch (error) {
+        // Network/JS error -> allow retry (but don't call it "failed").
+        markMcNotStarting({ timedOut: true });
+        setMcStartButtonState({ visible: true, disabled: false, label: '↻ Retry start' });
         alert('Error: ' + error.message);
-    } finally {
-        // Always refresh once after the attempt so the Start button can disappear
-        // when the backend reports running.
-        setTimeout(openMemoryModal, 500);
-
-        if (startBtn) {
-            // The modal refresh will hide the button when running.
-            startBtn.disabled = false;
-            startBtn.textContent = '▶️ Start Minecraft Server';
-        }
     }
 };
 
 function closeMemoryModal() {
     modalElements.overlay.classList.remove('active');
+    // Stop polling when the modal is not visible.
+    clearMcStartLoop();
 }
 
 // ===== Initialization =====
