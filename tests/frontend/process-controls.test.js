@@ -133,11 +133,12 @@ describe('Frontend Process Control', () => {
         // Starting state is immediate.
         expect(btn.disabled).toBe(true);
         expect(btn.textContent).toMatch(/Starting/i);
-        expect(btn.textContent).toMatch(/take up to 1 min/i);
+        expect(btn.textContent).toMatch(/take up to 3 minutes/i);
 
         // Still disabled and label should keep the hint.
         expect(btn.disabled).toBe(true);
-        expect(btn.textContent).toMatch(/take up to 1 min/i);
-        expect(btn.textContent).toMatch(/\d+s/);
+        expect(btn.textContent).toMatch(/take up to 3 minutes/i);
+        // should include an elapsed time segment
+        expect(btn.textContent).toMatch(/\d+s|\d+min\s+\d+\s+seconds/i);
     });
 });
