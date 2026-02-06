@@ -462,6 +462,8 @@ const diskModalElements = {
     note: document.getElementById('disk-note')
 };
 
+let diskModalLastFocus = null;
+
 async function fetchDiskDetails() {
     try {
         const response = await fetch(`${CONFIG.API_BASE}/api/disk/details`);
@@ -475,12 +477,25 @@ async function fetchDiskDetails() {
 
 function closeDiskModal() {
     diskModalElements.overlay?.classList.remove('active');
+
+    try {
+        const toFocus = diskModalLastFocus || diskModalElements.diskCard;
+        toFocus?.focus?.();
+    } catch {
+        // ignore
+    } finally {
+        diskModalLastFocus = null;
+    }
 }
 
 async function openDiskModal() {
     if (!diskModalElements.overlay) return;
 
+    diskModalLastFocus = document.activeElement;
     diskModalElements.overlay.classList.add('active');
+
+    // Best-effort focus for accessibility
+    diskModalElements.closeBtn?.focus?.();
 
     if (diskModalElements.filesystemsTbody) {
         diskModalElements.filesystemsTbody.innerHTML = '<tr><td colspan="5">Loading...</td></tr>';
@@ -751,6 +766,12 @@ function init() {
 
     // Disk card click handler (open modal)
     diskModalElements.diskCard?.addEventListener('click', openDiskModal);
+    diskModalElements.diskCard?.addEventListener('keydown', (e) => {
+        if (e.key === 'Enter' || e.key === ' ') {
+            e.preventDefault();
+            openDiskModal();
+        }
+    });
 
     // Process Table Event Delegation
     modalElements.processesTbody.addEventListener('click', (e) => {
