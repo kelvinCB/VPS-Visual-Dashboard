@@ -467,6 +467,8 @@ const cpuModalElements = {
     processesTbody: document.getElementById('cpu-processes-tbody')
 };
 
+let cpuModalLastFocus = null;
+
 async function fetchCpuDetails() {
     try {
         const response = await fetch(`${CONFIG.API_BASE}/api/cpu/details`);
@@ -480,6 +482,15 @@ async function fetchCpuDetails() {
 
 function closeCpuModal() {
     cpuModalElements.overlay?.classList.remove('active');
+
+    try {
+        const toFocus = cpuModalLastFocus || cpuModalElements.cpuCard;
+        toFocus?.focus?.();
+    } catch {
+        // ignore
+    } finally {
+        cpuModalLastFocus = null;
+    }
 }
 
 function sizeChartCanvas(canvas, heightCssPx = 90) {
@@ -494,13 +505,19 @@ function sizeChartCanvas(canvas, heightCssPx = 90) {
     canvas.height = Math.max(1, Math.floor(heightCssPx * dpr));
 
     const ctx = canvas.getContext('2d');
-    if (ctx) ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    // Keep the backing buffer scaled (width/height already account for DPR).
+    // Do NOT apply an additional transform here, since drawLineChart uses canvas.width/height.
+    if (ctx) ctx.setTransform(1, 0, 0, 1, 0, 0);
 }
 
 async function openCpuModal() {
     if (!cpuModalElements.overlay) return;
 
+    cpuModalLastFocus = document.activeElement;
     cpuModalElements.overlay.classList.add('active');
+
+    // Best-effort focus for accessibility
+    cpuModalElements.closeBtn?.focus?.();
     if (cpuModalElements.processesTbody) {
         cpuModalElements.processesTbody.innerHTML = '<tr><td colspan="4">Loading...</td></tr>';
     }
@@ -515,8 +532,10 @@ async function openCpuModal() {
         if (cpuModalElements.load15m) cpuModalElements.load15m.textContent = String(data.breakdown.loadAvg15m);
 
         // Recent chart uses the existing in-memory history
-        sizeChartCanvas(cpuModalElements.chart, 90);
-        drawLineChart(cpuModalElements.chart, state.cpuHistory, CONFIG.CHART_COLORS.cpu);
+        if (cpuModalElements.chart) {
+            sizeChartCanvas(cpuModalElements.chart, 90);
+            drawLineChart(cpuModalElements.chart, state.cpuHistory, CONFIG.CHART_COLORS.cpu);
+        }
 
         const escapeHtml = (str) => {
             if (!str) return '';
@@ -775,6 +794,12 @@ function init() {
 
     // CPU card click handler (open modal)
     cpuModalElements.cpuCard?.addEventListener('click', openCpuModal);
+    cpuModalElements.cpuCard?.addEventListener('keydown', (e) => {
+        if (e.key === 'Enter' || e.key === ' ') {
+            e.preventDefault();
+            openCpuModal();
+        }
+    });
 
     // Process Table Event Delegation
     modalElements.processesTbody.addEventListener('click', (e) => {
