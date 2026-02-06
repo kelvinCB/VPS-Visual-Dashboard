@@ -210,6 +210,41 @@ app.get('/api/metrics', async (req, res) => {
     }
 });
 
+// API: Get Disk details (filesystem list)
+app.get('/api/disk/details', async (req, res) => {
+    try {
+        const disks = await si.fsSize();
+
+        const filesystems = (Array.isArray(disks) ? disks : []).map(d => {
+            const size = Number(d.size || 0);
+            const used = Number(d.used || 0);
+            const avail = Math.max(0, size - used);
+
+            return {
+                fs: d.fs,
+                mount: d.mount,
+                type: d.type,
+                sizeBytes: size,
+                usedBytes: used,
+                availBytes: avail,
+                usePercent: Math.round(Number(d.use || 0) * 10) / 10,
+                size: formatBytes(size),
+                used: formatBytes(used),
+                avail: formatBytes(avail)
+            };
+        });
+
+        res.json({
+            filesystems,
+            note: 'Top-path disk scans are intentionally disabled by default to keep the dashboard fast.',
+            timestamp: new Date().toISOString()
+        });
+    } catch (error) {
+        console.error('Error getting disk details:', error);
+        res.status(500).json({ error: 'Failed to get disk details' });
+    }
+});
+
 // API: Get system information
 app.get('/api/system', async (req, res) => {
     try {

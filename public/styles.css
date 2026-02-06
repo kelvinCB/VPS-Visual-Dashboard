@@ -759,6 +759,12 @@ body {
   color: var(--text-primary);
 }
 
+.muted-note {
+  color: var(--text-muted);
+  font-size: 0.875rem;
+  line-height: 1.4;
+}
+
 /* ===== Processes Table ===== */
 .processes-table-container {
   overflow-x: auto;

@@ -453,6 +453,92 @@ async function fetchProcesses() {
     }
 }
 
+// Disk Details Modal
+const diskModalElements = {
+    overlay: document.getElementById('disk-modal'),
+    closeBtn: document.getElementById('disk-modal-close'),
+    diskCard: document.getElementById('disk-card'),
+    filesystemsTbody: document.getElementById('disk-filesystems-tbody'),
+    note: document.getElementById('disk-note')
+};
+
+let diskModalLastFocus = null;
+
+async function fetchDiskDetails() {
+    try {
+        const response = await fetch(`${CONFIG.API_BASE}/api/disk/details`);
+        if (!response.ok) throw new Error('Failed to fetch disk details');
+        return await response.json();
+    } catch (error) {
+        console.error('Error fetching disk details:', error);
+        throw error;
+    }
+}
+
+function closeDiskModal() {
+    diskModalElements.overlay?.classList.remove('active');
+
+    try {
+        const toFocus = diskModalLastFocus || diskModalElements.diskCard;
+        toFocus?.focus?.();
+    } catch {
+        // ignore
+    } finally {
+        diskModalLastFocus = null;
+    }
+}
+
+async function openDiskModal() {
+    if (!diskModalElements.overlay) return;
+
+    diskModalLastFocus = document.activeElement;
+    diskModalElements.overlay.classList.add('active');
+
+    // Best-effort focus for accessibility
+    diskModalElements.closeBtn?.focus?.();
+
+    if (diskModalElements.filesystemsTbody) {
+        diskModalElements.filesystemsTbody.innerHTML = '<tr><td colspan="5">Loading...</td></tr>';
+    }
+
+    try {
+        const data = await fetchDiskDetails();
+
+        if (diskModalElements.note) {
+            diskModalElements.note.textContent = data.note || '';
+        }
+
+        const escapeHtml = (str) => {
+            if (!str) return '';
+            return String(str)
+                .replace(/&/g, '&amp;')
+                .replace(/</g, '&lt;')
+                .replace(/>/g, '&gt;')
+                .replace(/"/g, '&quot;')
+                .replace(/'/g, '&#039;');
+        };
+
+        if (diskModalElements.filesystemsTbody) {
+            diskModalElements.filesystemsTbody.innerHTML = (data.filesystems || [])
+                .map(fs => `
+                    <tr>
+                        <td>${escapeHtml(fs.mount || fs.fs || '-')}</td>
+                        <td>${escapeHtml(fs.size)}</td>
+                        <td>${escapeHtml(fs.used)}</td>
+                        <td>${escapeHtml(fs.avail)}</td>
+                        <td>${escapeHtml(fs.usePercent)}%</td>
+                    </tr>
+                `)
+                .join('') || '<tr><td colspan="5">No data</td></tr>';
+        }
+    } catch (error) {
+        console.error(error);
+        if (diskModalElements.filesystemsTbody) {
+            diskModalElements.filesystemsTbody.innerHTML = '<tr><td colspan="5">Error loading data</td></tr>';
+        }
+    }
+}
+
 async function openMemoryModal() {
     modalElements.overlay.classList.add('active');
     modalElements.processesTbody.innerHTML = '<tr><td colspan="5">Loading...</td></tr>';
@@ -678,6 +764,15 @@ function init() {
     // Memory card click handler (open modal)
     modalElements.memoryCard.addEventListener('click', openMemoryModal);
 
+    // Disk card click handler (open modal)
+    diskModalElements.diskCard?.addEventListener('click', openDiskModal);
+    diskModalElements.diskCard?.addEventListener('keydown', (e) => {
+        if (e.key === 'Enter' || e.key === ' ') {
+            e.preventDefault();
+            openDiskModal();
+        }
+    });
+
     // Process Table Event Delegation
     modalElements.processesTbody.addEventListener('click', (e) => {
         const btn = e.target.closest('.btn-action');
@@ -734,10 +829,23 @@ function init() {
         }
     });
 
+    diskModalElements.closeBtn?.addEventListener('click', closeDiskModal);
+    diskModalElements.overlay?.addEventListener('click', (e) => {
+        if (e.target === diskModalElements.overlay) {
+            closeDiskModal();
+        }
+    });
+
     // Close modal on Escape key
     document.addEventListener('keydown', (e) => {
-        if (e.key === 'Escape' && modalElements.overlay.classList.contains('active')) {
+        if (e.key !== 'Escape') return;
+
+        if (modalElements.overlay.classList.contains('active')) {
             closeMemoryModal();
+        }
+
+        if (diskModalElements.overlay?.classList.contains('active')) {
+            closeDiskModal();
         }
     });
 

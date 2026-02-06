@@ -122,8 +122,8 @@
         <span class="click-hint">Click for details</span>
       </article>
 
-      <!-- Disk Usage Card -->
-      <article class="metric-card disk-card" id="disk-card">
+      <!-- Disk Usage Card (Clickable) -->
+      <article class="metric-card disk-card clickable" id="disk-card" title="Click for details" role="button" tabindex="0" aria-label="Open disk details">
         <div class="metric-header">
           <span class="metric-title">Disk usage</span>
           <svg class="metric-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
@@ -143,6 +143,7 @@
             <span id="disk-detail">0 GB / 0 GB</span>
           </div>
         </div>
+        <span class="click-hint">Click for details</span>
       </article>
 
       <!-- Incoming Traffic Card -->
@@ -291,6 +292,40 @@
               </tbody>
             </table>
           </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Disk Details Modal -->
+  <div class="modal-overlay" id="disk-modal">
+    <div class="modal" role="dialog" aria-modal="true" aria-labelledby="disk-modal-title">
+      <div class="modal-header">
+        <h2 class="modal-title" id="disk-modal-title">Disk Details</h2>
+        <button class="modal-close" id="disk-modal-close" type="button" aria-label="Close">&times;</button>
+      </div>
+      <div class="modal-body">
+        <div class="processes-section">
+          <h3>Filesystems</h3>
+          <div class="processes-table-container">
+            <table class="processes-table">
+              <thead>
+                <tr>
+                  <th>Mount</th>
+                  <th>Size</th>
+                  <th>Used</th>
+                  <th>Avail</th>
+                  <th>%</th>
+                </tr>
+              </thead>
+              <tbody id="disk-filesystems-tbody">
+                <tr>
+                  <td colspan="5">Loading...</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+          <p class="muted-note" id="disk-note" style="margin-top: 12px;">-</p>
         </div>
       </div>
     </div>
