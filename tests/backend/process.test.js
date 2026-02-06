@@ -63,6 +63,38 @@ describe('Process Control Endpoints', () => {
         expect(killSpy).toHaveBeenCalledWith(pid, 'SIGTERM');
     });
 
+    it('GET /api/services/minecraft/status should include pid from listening port when process heuristics do not match', async () => {
+        // Make processes list not match minecraft heuristics
+        si.processes.mockResolvedValueOnce({
+            list: [
+                { pid: 999, name: 'java', command: 'java -jar fabric-server-launch.jar', mem: 1, cpu: 0 }
+            ]
+        });
+
+        // Create a temporary TCP listener so isPortListening() returns true
+        const net = require('net');
+        const srv = net.createServer(() => { });
+        await new Promise((resolve) => srv.listen(0, '127.0.0.1', resolve));
+        const port = srv.address().port;
+        process.env.MC_PORT = String(port);
+
+        // Mock child_process exec used by getPidListeningOnPort.
+        cp.exec.mockImplementationOnce((cmd, opts, cb) => {
+            const done = typeof opts === 'function' ? opts : cb;
+            done(null, '7777\n', '');
+        });
+
+        const res = await request(app).get('/api/services/minecraft/status');
+
+        srv.close();
+
+        expect(res.status).toBe(200);
+        expect(res.body.success).toBe(true);
+        expect(res.body.listening).toBe(true);
+        expect(res.body.port).toBe(port);
+        expect(res.body.pid).toBe(7777);
+    });
+
     it('should enforce Bearer token auth on sensitive endpoints when DASHBOARD_API_TOKEN is set', async () => {
         process.env.DASHBOARD_API_TOKEN = 'test-token';
 
