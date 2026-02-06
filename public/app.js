@@ -800,7 +800,7 @@ async function safeParseJsonResponse(res) {
 const MC_STARTING_REFRESH_MS = 5000;
 const MC_STARTING_LABEL_TICK_MS = 1000;
 const MC_STARTING_TIMEOUT_MS = 180000; // 3 minutes
-const MC_STARTING_HINT = 'This can take up to 1 min';
+const MC_STARTING_HINT = 'This can take up to 3 minutes';
 
 const mcStartState = {
     starting: false,
@@ -859,10 +859,23 @@ function getStartingFrameIcon() {
     return (mcStartState.elapsedSec % 2 === 0) ? '⏳' : '⌛';
 }
 
+function formatElapsedCompact(totalSec) {
+    const sec = Math.max(0, Number(totalSec) || 0);
+    const minutes = Math.floor(sec / 60);
+    const seconds = sec % 60;
+
+    if (minutes <= 0) return `${seconds}s`;
+
+    const minLabel = minutes === 1 ? '1min' : `${minutes}min`;
+    const secLabel = seconds === 1 ? '1 second' : `${seconds} seconds`;
+    return `${minLabel} ${secLabel}`;
+}
+
 function formatStartingLabel() {
     const sec = Math.max(0, Number(mcStartState.elapsedSec) || 0);
     const icon = getStartingFrameIcon();
-    return `${icon} Starting… ${sec}s (${MC_STARTING_HINT})`;
+    const elapsed = formatElapsedCompact(sec);
+    return `${icon} Starting… ${elapsed} (${MC_STARTING_HINT})`;
 }
 
 async function refreshMinecraftStartUI() {
