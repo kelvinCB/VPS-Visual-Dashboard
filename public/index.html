@@ -392,6 +392,22 @@
             </table>
           </div>
           <p class="muted-note" id="disk-note" style="margin-top: 12px;">-</p>
+
+          <hr style="margin: 16px 0; opacity: 0.15;" />
+
+          <div>
+            <div style="display:flex; align-items:center; justify-content:space-between; gap: 12px; flex-wrap: wrap;">
+              <h3 style="margin: 0;">Top directories (shallow scan)</h3>
+              <button id="disk-breakdown-btn" type="button" class="btn btn-primary" style="padding: 8px 12px;">
+                Scan /
+              </button>
+            </div>
+            <p class="muted-note" id="disk-breakdown-note" style="margin-top: 8px;">
+              This is a shallow, same-filesystem scan to explain used space. Results are cached briefly.
+            </p>
+            <div id="disk-breakdown-status" class="muted-note" style="margin-top: 8px;"></div>
+            <ul id="disk-breakdown-list" style="margin-top: 8px; padding-left: 18px;"></ul>
+          </div>
         </div>
       </div>
     </div>

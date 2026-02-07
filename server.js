@@ -283,12 +283,180 @@ app.get('/api/disk/details', async (req, res) => {
 
         res.json({
             filesystems,
-            note: 'Top-path disk scans are intentionally disabled by default to keep the dashboard fast.',
+            note: 'Top-path disk scans are intentionally disabled by default to keep the dashboard fast. Use /api/disk/breakdown for a lightweight directory breakdown.',
             timestamp: new Date().toISOString()
         });
     } catch (error) {
         console.error('Error getting disk details:', error);
         res.status(500).json({ error: 'Failed to get disk details' });
+    }
+});
+
+// ===== Disk usage breakdown (top directories)
+// Goal: help explain how "used" space on / is distributed without doing deep, slow scans.
+// We intentionally limit max depth and exclude virtual filesystems.
+const DISK_BREAKDOWN_CACHE_TTL_MS = 60_000; // 60s
+let diskBreakdownCache = new Map();
+let diskBreakdownPending = new Map(); // cache-coalescing for in-flight requests
+
+function validateDiskBreakdownMount(mount) {
+    // This feature is intended to explain root (/) usage only.
+    // Reject anything else to avoid filesystem enumeration.
+    const m = String(mount || '/');
+    if (m !== '/') {
+        const err = new Error('Invalid mount');
+        err.statusCode = 400;
+        return err;
+    }
+    return null;
+}
+
+function parseDuBytesOutput(output) {
+    // Expected format: "<bytes>\t<path>" per line.
+    const lines = String(output || '').split('\n').map(l => l.trim()).filter(Boolean);
+    const out = [];
+
+    for (const line of lines) {
+        const m = line.match(/^(\d+)\s+(.+)$/);
+        if (!m) continue;
+        const bytes = Number(m[1]);
+        const p = m[2];
+        if (!Number.isFinite(bytes) || bytes < 0) continue;
+        out.push({ bytes, path: p });
+    }
+
+    return out;
+}
+
+function getDuExcludeArgs(mount) {
+    const safeMount = mount === '/' ? '/' : String(mount || '/');
+
+    // Avoid scanning pseudo-filesystems on root mounts.
+    // Note: using --exclude doesn't prevent du from traversing them if they are separate mounts;
+    // -x enforces "same filesystem".
+    const excludes = safeMount === '/'
+        ? ['/proc', '/sys', '/dev', '/run', '/tmp', '/var/lib/docker/overlay2']
+        : [];
+
+    const args = [];
+    for (const ex of excludes) {
+        args.push(`--exclude=${ex}`);
+    }
+
+    return args;
+}
+
+function parseBoundedInt(value, { name, min, max, defaultValue }) {
+    if (value === undefined || value === null || value === '') return defaultValue;
+    const n = Number(value);
+    if (!Number.isInteger(n)) {
+        const err = new Error(`Invalid ${name}`);
+        err.statusCode = 400;
+        throw err;
+    }
+    if (n < min || n > max) {
+        const err = new Error(`Invalid ${name}`);
+        err.statusCode = 400;
+        throw err;
+    }
+    return n;
+}
+
+async function getDiskUsageBreakdown({ mount = '/', depth = 1, limit = 12, execFileFn = cp.execFile } = {}) {
+    const resolvedMount = String(mount || '/');
+    const mountErr = validateDiskBreakdownMount(resolvedMount);
+    if (mountErr) throw mountErr;
+
+    const maxDepth = parseBoundedInt(depth, { name: 'depth', min: 1, max: 3, defaultValue: 1 });
+    const maxLimit = parseBoundedInt(limit, { name: 'limit', min: 1, max: 50, defaultValue: 12 });
+
+    const cacheKey = JSON.stringify([resolvedMount, maxDepth, maxLimit]);
+
+    const cached = diskBreakdownCache.get(cacheKey);
+    if (cached && (Date.now() - cached.at) < DISK_BREAKDOWN_CACHE_TTL_MS) return cached.value;
+
+    // Coalesce concurrent identical requests to avoid spawning du repeatedly.
+    const pending = diskBreakdownPending.get(cacheKey);
+    if (pending) return await pending;
+
+    const promise = (async () => {
+        const excludeArgs = getDuExcludeArgs(resolvedMount);
+
+        const duArgs = [
+            '-x',
+            '-B1',
+            `--max-depth=${maxDepth}`,
+            ...excludeArgs,
+            '--',
+            resolvedMount
+        ];
+
+        const stdout = await new Promise((resolve, reject) => {
+            execFileFn('du', duArgs, { timeout: 7000, maxBuffer: 5 * 1024 * 1024 }, (err, out) => {
+                if (err) return reject(err);
+                resolve(out);
+            });
+        });
+
+        let items = parseDuBytesOutput(stdout);
+
+        // Remove the mount itself so the UI shows subpaths only.
+        items = items.filter(i => i.path !== resolvedMount);
+
+        // Sort by bytes desc and clamp.
+        items.sort((a, b) => b.bytes - a.bytes);
+        items = items.slice(0, maxLimit);
+
+        const result = {
+            mount: resolvedMount,
+            depth: maxDepth,
+            limit: maxLimit,
+            entries: items.map(i => ({
+                path: i.path,
+                bytes: i.bytes,
+                formatted: formatBytes(i.bytes)
+            })),
+            timestamp: new Date().toISOString(),
+            note: 'Directory breakdown is shallow (maxDepth) and same-filesystem only (-x) to keep it fast.'
+        };
+
+        diskBreakdownCache.set(cacheKey, { at: Date.now(), value: result });
+        return result;
+    })();
+
+    diskBreakdownPending.set(cacheKey, promise);
+
+    try {
+        return await promise;
+    } finally {
+        diskBreakdownPending.delete(cacheKey);
+    }
+}
+
+// API: Get Disk usage breakdown (default: /). For safety, only '/' is supported.
+app.get('/api/disk/breakdown', async (req, res) => {
+    try {
+        const mount = typeof req.query.mount === 'string' ? req.query.mount : '/';
+        const depth = req.query.depth;
+        const limit = req.query.limit;
+
+        const payload = await getDiskUsageBreakdown({ mount, depth, limit });
+        res.json(payload);
+    } catch (error) {
+        const status = Number(error?.statusCode) || 500;
+
+        // Do not leak raw filesystem errors to clients.
+        if (status !== 500) {
+            return res.status(status).json({ error: error.message || 'Invalid request' });
+        }
+
+        // Timeout/kill
+        if (error?.killed || error?.signal === 'SIGTERM' || error?.signal === 'SIGKILL') {
+            return res.status(504).json({ error: 'Disk breakdown timed out' });
+        }
+
+        console.error('Error getting disk breakdown:', error);
+        res.status(500).json({ error: 'Failed to get disk breakdown' });
     }
 });
 
@@ -826,5 +994,8 @@ module.exports = {
     getPidListeningOnPort,
     detectMinecraftProcess,
     parseMinecraftProcessMatchers,
-    isMinecraftProcess
+    isMinecraftProcess,
+    // Disk breakdown (exported for testing)
+    parseDuBytesOutput,
+    getDiskUsageBreakdown
 };

@@ -99,12 +99,8 @@ test.describe('VPS Dashboard', () => {
         const refreshBtn = page.locator('#refresh-btn');
         await refreshBtn.click();
 
-        // Wait for refresh to complete
-        await page.waitForTimeout(500);
-
-        // Last updated time should have changed
-        const timeAfter = await lastUpdated.textContent();
-        expect(timeAfter).not.toBe(timeBefore);
+        // Wait for last-updated to change (allow a few seconds; backend may respond within same second)
+        await expect(lastUpdated).not.toHaveText(timeBefore || '', { timeout: 5000 });
     });
 
     test('should display VPS details section', async ({ page }) => {
