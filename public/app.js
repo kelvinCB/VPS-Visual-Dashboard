@@ -588,9 +588,9 @@ async function fetchDiskDetails() {
     }
 }
 
-async function fetchDiskBreakdown({ mount = '/', depth = 1, limit = 12 } = {}) {
+async function fetchDiskBreakdown({ mount = '/', depth = 1, limit = 12, signal } = {}) {
     const params = new URLSearchParams({ mount, depth: String(depth), limit: String(limit) });
-    const response = await fetch(`${CONFIG.API_BASE}/api/disk/breakdown?${params.toString()}`);
+    const response = await fetch(`${CONFIG.API_BASE}/api/disk/breakdown?${params.toString()}`, { signal });
     if (!response.ok) throw new Error('Failed to fetch disk breakdown');
     return await response.json();
 }
@@ -651,26 +651,50 @@ async function openDiskModal() {
     }
 }
 
-async function loadDiskBreakdown() {
+let diskBreakdownController = null;
+let diskBreakdownLastPromise = null;
+
+async function loadDiskBreakdown(mount = '/') {
     if (!diskModalElements.breakdownStatus || !diskModalElements.breakdownList) return;
+
+    // Abort any in-flight scan.
+    try { diskBreakdownController?.abort(); } catch { /* ignore */ }
+    diskBreakdownController = new AbortController();
+
+    if (diskModalElements.breakdownBtn) diskModalElements.breakdownBtn.disabled = true;
 
     diskModalElements.breakdownStatus.textContent = 'Scanning...';
     diskModalElements.breakdownList.innerHTML = '';
 
     try {
-        const data = await fetchDiskBreakdown({ mount: '/', depth: 1, limit: 12 });
+        const promise = fetchDiskBreakdown({ mount, depth: 1, limit: 12, signal: diskBreakdownController.signal });
+        diskBreakdownLastPromise = promise;
+        const data = await promise;
+
+        // Race guard: only render latest request.
+        if (diskBreakdownLastPromise !== promise) return;
+
         const entries = Array.isArray(data.entries) ? data.entries : [];
 
         diskModalElements.breakdownStatus.textContent = entries.length
-            ? `Top paths for ${data.mount} (depth ${data.depth}) — cached` 
+            ? `Top paths for ${data.mount} (depth ${data.depth}) — cached`
             : 'No data.';
 
-        diskModalElements.breakdownList.innerHTML = entries
-            .map(e => `<li><code>${escapeHtml(e.path)}</code> — ${escapeHtml(e.formatted)}</li>`)
-            .join('');
+        // DOM-based rendering (no innerHTML) to avoid XSS.
+        for (const e of entries) {
+            const li = document.createElement('li');
+            const code = document.createElement('code');
+            code.textContent = String(e.path || '');
+            li.appendChild(code);
+            li.appendChild(document.createTextNode(' — ' + String(e.formatted || '')));
+            diskModalElements.breakdownList.appendChild(li);
+        }
     } catch (err) {
+        if (err?.name === 'AbortError') return;
         console.error(err);
         diskModalElements.breakdownStatus.textContent = 'Error scanning disk breakdown.';
+    } finally {
+        if (diskModalElements.breakdownBtn) diskModalElements.breakdownBtn.disabled = false;
     }
 }
 

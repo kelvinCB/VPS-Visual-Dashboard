@@ -19,10 +19,15 @@ describe('getDiskUsageBreakdown', () => {
     vi.restoreAllMocks();
   });
 
+  it('rejects mounts other than /', async () => {
+    await expect(getDiskUsageBreakdown({ mount: '/etc', depth: 1, limit: 10, execFileFn: vi.fn() }))
+      .rejects.toMatchObject({ statusCode: 400 });
+  });
+
   it('returns sorted, formatted entries (excluding the mount itself)', async () => {
     const execFileFn = vi.fn((cmd, args, opts, cb) => {
       expect(cmd).toBe('du');
-      // include mount line at end; ensure it gets filtered
+      // include mount line; ensure it gets filtered
       cb(null, '5\t/var\n15\t/home\n20\t/\n');
     });
 
@@ -31,7 +36,7 @@ describe('getDiskUsageBreakdown', () => {
     expect(payload.mount).toBe('/');
     expect(payload.entries.map(e => e.path)).toEqual(['/home', '/var']);
     expect(payload.entries[0].bytes).toBe(15);
-    expect(payload.entries[0].formatted).toContain('Bytes');
+    expect(String(payload.entries[0].formatted)).toContain('Bytes');
   });
 });
 
