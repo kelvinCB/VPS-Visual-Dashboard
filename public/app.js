@@ -569,7 +569,10 @@ const diskModalElements = {
     closeBtn: document.getElementById('disk-modal-close'),
     diskCard: document.getElementById('disk-card'),
     filesystemsTbody: document.getElementById('disk-filesystems-tbody'),
-    note: document.getElementById('disk-note')
+    note: document.getElementById('disk-note'),
+    breakdownBtn: document.getElementById('disk-breakdown-btn'),
+    breakdownList: document.getElementById('disk-breakdown-list'),
+    breakdownStatus: document.getElementById('disk-breakdown-status')
 };
 
 let diskModalLastFocus = null;
@@ -583,6 +586,13 @@ async function fetchDiskDetails() {
         console.error('Error fetching disk details:', error);
         throw error;
     }
+}
+
+async function fetchDiskBreakdown({ mount = '/', depth = 1, limit = 12 } = {}) {
+    const params = new URLSearchParams({ mount, depth: String(depth), limit: String(limit) });
+    const response = await fetch(`${CONFIG.API_BASE}/api/disk/breakdown?${params.toString()}`);
+    if (!response.ok) throw new Error('Failed to fetch disk breakdown');
+    return await response.json();
 }
 
 function closeDiskModal() {
@@ -610,6 +620,9 @@ async function openDiskModal() {
         diskModalElements.filesystemsTbody.innerHTML = '<tr><td colspan="5">Loading...</td></tr>';
     }
 
+    if (diskModalElements.breakdownStatus) diskModalElements.breakdownStatus.textContent = '';
+    if (diskModalElements.breakdownList) diskModalElements.breakdownList.innerHTML = '';
+
     try {
         const data = await fetchDiskDetails();
 
@@ -635,6 +648,29 @@ async function openDiskModal() {
         if (diskModalElements.filesystemsTbody) {
             diskModalElements.filesystemsTbody.innerHTML = '<tr><td colspan="5">Error loading data</td></tr>';
         }
+    }
+}
+
+async function loadDiskBreakdown() {
+    if (!diskModalElements.breakdownStatus || !diskModalElements.breakdownList) return;
+
+    diskModalElements.breakdownStatus.textContent = 'Scanning...';
+    diskModalElements.breakdownList.innerHTML = '';
+
+    try {
+        const data = await fetchDiskBreakdown({ mount: '/', depth: 1, limit: 12 });
+        const entries = Array.isArray(data.entries) ? data.entries : [];
+
+        diskModalElements.breakdownStatus.textContent = entries.length
+            ? `Top paths for ${data.mount} (depth ${data.depth}) — cached` 
+            : 'No data.';
+
+        diskModalElements.breakdownList.innerHTML = entries
+            .map(e => `<li><code>${escapeHtml(e.path)}</code> — ${escapeHtml(e.formatted)}</li>`)
+            .join('');
+    } catch (err) {
+        console.error(err);
+        diskModalElements.breakdownStatus.textContent = 'Error scanning disk breakdown.';
     }
 }
 
@@ -1077,6 +1113,11 @@ function init() {
             refreshMetricsOnly();
         });
     }
+
+    // Disk breakdown button
+    diskModalElements.breakdownBtn?.addEventListener('click', () => {
+        loadDiskBreakdown();
+    });
 
     // Modal close handlers
     modalElements.closeBtn.addEventListener('click', closeMemoryModal);

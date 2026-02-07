@@ -55,10 +55,9 @@ test.describe('Process Control Features', () => {
             await expect(lowMemRow.locator('.btn-kill')).not.toBeVisible();
         }
 
-        // Test Kill Dialog handling
-        page.on('dialog', dialog => dialog.accept());
-
-        // Click kill
+        // Test Kill Dialog handling (avoid leaking a global dialog handler across tests)
+        // confirm() triggers a dialog; register a one-shot handler before clicking.
+        page.once('dialog', (dialog) => dialog.accept());
         await row.locator('.btn-kill').click();
     });
 });
