@@ -591,7 +591,13 @@ async function fetchDiskDetails() {
 async function fetchDiskBreakdown({ mount = '/', depth = 1, limit = 12, signal } = {}) {
     const params = new URLSearchParams({ mount, depth: String(depth), limit: String(limit) });
     const response = await fetch(`${CONFIG.API_BASE}/api/disk/breakdown?${params.toString()}`, { signal });
-    if (!response.ok) throw new Error('Failed to fetch disk breakdown');
+
+    if (!response.ok) {
+        const errPayload = await safeParseJsonResponse(response).catch(() => null);
+        const msg = errPayload?.error || `Failed to fetch disk breakdown (HTTP ${response.status})`;
+        throw new Error(msg);
+    }
+
     return await response.json();
 }
 
