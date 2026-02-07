@@ -596,6 +596,13 @@ async function fetchDiskBreakdown({ mount = '/', depth = 1, limit = 12, signal }
 }
 
 function closeDiskModal() {
+    // Stop any in-flight scan to avoid background work + stale UI updates.
+    try { diskBreakdownController?.abort(); } catch { /* ignore */ }
+    diskBreakdownController = null;
+    diskBreakdownLastPromise = null;
+
+    if (diskModalElements.breakdownBtn) diskModalElements.breakdownBtn.disabled = false;
+
     diskModalElements.overlay?.classList.remove('active');
 
     try {

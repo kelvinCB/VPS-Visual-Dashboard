@@ -24,6 +24,12 @@ test.describe('Process Control Features', () => {
             await route.fulfill({ json: { success: true } });
         });
 
+        // Avoid real JS dialogs in CI (can cause session crashes in some Playwright builds)
+        await page.addInitScript(() => {
+            window.confirm = () => true;
+            window.alert = () => {};
+        });
+
         await page.goto('/');
 
         // Open memory modal
@@ -55,9 +61,7 @@ test.describe('Process Control Features', () => {
             await expect(lowMemRow.locator('.btn-kill')).not.toBeVisible();
         }
 
-        // Test Kill Dialog handling (avoid leaking a global dialog handler across tests)
-        // confirm() triggers a dialog; register a one-shot handler before clicking.
-        page.once('dialog', (dialog) => dialog.accept());
+        // Click kill (confirm is stubbed via addInitScript)
         await row.locator('.btn-kill').click();
     });
 });

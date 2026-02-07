@@ -346,13 +346,29 @@ function getDuExcludeArgs(mount) {
     return args;
 }
 
+function parseBoundedInt(value, { name, min, max, defaultValue }) {
+    if (value === undefined || value === null || value === '') return defaultValue;
+    const n = Number(value);
+    if (!Number.isInteger(n)) {
+        const err = new Error(`Invalid ${name}`);
+        err.statusCode = 400;
+        throw err;
+    }
+    if (n < min || n > max) {
+        const err = new Error(`Invalid ${name}`);
+        err.statusCode = 400;
+        throw err;
+    }
+    return n;
+}
+
 async function getDiskUsageBreakdown({ mount = '/', depth = 1, limit = 12, execFileFn = cp.execFile } = {}) {
     const resolvedMount = String(mount || '/');
     const mountErr = validateDiskBreakdownMount(resolvedMount);
     if (mountErr) throw mountErr;
 
-    const maxDepth = Math.min(3, Math.max(1, Number(depth) || 1));
-    const maxLimit = Math.min(50, Math.max(1, Number(limit) || 12));
+    const maxDepth = parseBoundedInt(depth, { name: 'depth', min: 1, max: 3, defaultValue: 1 });
+    const maxLimit = parseBoundedInt(limit, { name: 'limit', min: 1, max: 50, defaultValue: 12 });
 
     const cacheKey = JSON.stringify([resolvedMount, maxDepth, maxLimit]);
 
@@ -371,6 +387,7 @@ async function getDiskUsageBreakdown({ mount = '/', depth = 1, limit = 12, execF
             '-B1',
             `--max-depth=${maxDepth}`,
             ...excludeArgs,
+            '--',
             resolvedMount
         ];
 
