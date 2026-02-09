@@ -392,8 +392,8 @@ async function getDiskUsageBreakdown({ mount = '/', depth = 1, limit = 12, execF
         ];
 
         const stdout = await new Promise((resolve, reject) => {
-            // Root scans can still be slow on busy hosts. Keep a hard timeout, but allow more headroom.
-            execFileFn('du', duArgs, { timeout: 20_000, maxBuffer: 5 * 1024 * 1024 }, (err, out) => {
+            // Root scans can still be slow on busy hosts. Increase timeout to 45s.
+            execFileFn('du', duArgs, { timeout: 45_000, maxBuffer: 10 * 1024 * 1024 }, (err, out) => {
                 if (err) return reject(err);
                 resolve(out);
             });

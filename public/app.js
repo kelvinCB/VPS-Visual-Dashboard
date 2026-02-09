@@ -794,6 +794,10 @@ function stopDiskBreakdownElapsedTimer() {
     if (diskModalElements.breakdownElapsed) {
         diskModalElements.breakdownElapsed.textContent = '';
     }
+
+    // Hide dots animation when not scanning
+    const dots = document.querySelector('#disk-breakdown-status .scan-dots');
+    if (dots) dots.style.display = 'none';
 }
 
 function startDiskBreakdownElapsedTimer() {
@@ -801,15 +805,18 @@ function startDiskBreakdownElapsedTimer() {
     diskBreakdownStartedAtMs = Date.now();
 
     const el = diskModalElements.breakdownElapsed;
-    if (!el) return;
+    if (el) el.textContent = '(0.0s)';
+
+    // Show dots animation
+    const dots = document.querySelector('#disk-breakdown-status .scan-dots');
+    if (dots) dots.style.display = 'inline-flex';
 
     const tick = () => {
         if (!diskBreakdownStartedAtMs) return;
         const seconds = (Date.now() - diskBreakdownStartedAtMs) / 1000;
-        el.textContent = `(${seconds.toFixed(1)}s)`;
+        if (el) el.textContent = `(${seconds.toFixed(1)}s)`;
     };
 
-    tick();
     diskBreakdownElapsedTimer = setInterval(tick, 100);
 }
 
@@ -864,11 +871,19 @@ async function loadDiskBreakdown(mount = '/') {
         if (err?.name === 'AbortError') return;
         console.error(err);
         const msg = err?.message || 'Error scanning disk breakdown.';
+        
         if (diskModalElements.breakdownStatusText) {
-            diskModalElements.breakdownStatusText.textContent = msg;
+            diskModalElements.breakdownStatusText.textContent = 'Error: ' + msg;
         } else {
-            diskModalElements.breakdownStatus.textContent = msg;
+            diskModalElements.breakdownStatus.textContent = 'Error: ' + msg;
         }
+
+        // Surface the error clearly in a modal so the user knows it failed.
+        await appAlert({
+            title: 'Scan Failed',
+            message: msg,
+            variant: 'danger'
+        });
     } finally {
         stopDiskBreakdownElapsedTimer();
         if (diskModalElements.breakdownBtn) diskModalElements.breakdownBtn.disabled = false;
