@@ -24,11 +24,6 @@ test.describe('Process Control Features', () => {
             await route.fulfill({ json: { success: true } });
         });
 
-        // Avoid real JS dialogs in CI (can cause session crashes in some Playwright builds)
-        await page.addInitScript(() => {
-            window.confirm = () => true;
-            window.alert = () => {};
-        });
 
         await page.goto('/');
 
@@ -61,8 +56,15 @@ test.describe('Process Control Features', () => {
             await expect(lowMemRow.locator('.btn-kill')).not.toBeVisible();
         }
 
-        // Click kill (confirm is stubbed via addInitScript)
+        // Click kill -> confirm in custom app modal
         await row.locator('.btn-kill').click();
+        const appModal = page.locator('#app-modal');
+        await expect(appModal).toHaveClass(/active/);
+        await page.click('#app-modal-confirm');
+
+        // Success alert modal
+        await expect(appModal).toHaveClass(/active/);
+        await page.click('#app-modal-confirm');
     });
 });
 

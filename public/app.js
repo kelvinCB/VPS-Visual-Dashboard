@@ -42,6 +42,118 @@ function getAuthHeaders() {
     return { Authorization: `Bearer ${token}` };
 }
 
+// ===== App Modal (custom alerts/confirmations) =====
+// Avoid native browser alert()/confirm() to keep UI consistent and testable.
+let appModalEls = {};
+
+function refreshAppModalEls() {
+    appModalEls = {
+        overlay: document.getElementById('app-modal'),
+        modal: document.querySelector('#app-modal .app-modal'),
+        title: document.getElementById('app-modal-title'),
+        message: document.getElementById('app-modal-message'),
+        close: document.getElementById('app-modal-close'),
+        confirm: document.getElementById('app-modal-confirm'),
+        cancel: document.getElementById('app-modal-cancel')
+    };
+}
+
+let appModalState = {
+    resolve: null,
+    open: false
+};
+
+function closeAppModal(result = false) {
+    refreshAppModalEls();
+    if (!appModalEls.overlay) return;
+
+    appModalEls.overlay.classList.remove('active');
+    appModalEls.overlay.setAttribute('aria-hidden', 'true');
+    if (appModalEls.modal) appModalEls.modal.removeAttribute('data-variant');
+
+    const r = appModalState.resolve;
+    appModalState.resolve = null;
+    appModalState.open = false;
+
+    if (typeof r === 'function') r(Boolean(result));
+}
+
+function openAppModal({
+    title = 'Notice',
+    message = '',
+    variant = 'info',
+    confirmText = 'OK',
+    cancelText = 'Cancel',
+    showCancel = false
+} = {}) {
+    refreshAppModalEls();
+    if (!appModalEls.overlay || !appModalEls.confirm || !appModalEls.cancel) {
+        // Last resort if markup is missing.
+        // eslint-disable-next-line no-alert
+        alert(String(message || title || ''));
+        return Promise.resolve(true);
+    }
+
+    // Ensure event listeners are bound even in test environments where init() may not run.
+    initAppModal();
+
+    // If a modal is already open, close it as cancelled.
+    if (appModalState.open) closeAppModal(false);
+
+    appModalState.open = true;
+
+    if (appModalEls.title) appModalEls.title.textContent = String(title || 'Notice');
+    if (appModalEls.message) appModalEls.message.textContent = String(message || '');
+    if (appModalEls.modal) appModalEls.modal.setAttribute('data-variant', String(variant || 'info'));
+
+    appModalEls.confirm.textContent = String(confirmText || 'OK');
+    appModalEls.cancel.textContent = String(cancelText || 'Cancel');
+    appModalEls.cancel.style.display = showCancel ? 'inline-flex' : 'none';
+
+    appModalEls.overlay.classList.add('active');
+    appModalEls.overlay.setAttribute('aria-hidden', 'false');
+
+    // Focus confirm for keyboard users.
+    setTimeout(() => appModalEls.confirm && appModalEls.confirm.focus(), 0);
+
+    return new Promise(resolve => {
+        appModalState.resolve = resolve;
+    });
+}
+
+function appConfirm({ title, message, confirmText = 'OK', cancelText = 'Cancel', variant = 'danger' } = {}) {
+    return openAppModal({ title, message, confirmText, cancelText, showCancel: true, variant });
+}
+
+function appAlert({ title, message, confirmText = 'OK', variant = 'info' } = {}) {
+    return openAppModal({ title, message, confirmText, showCancel: false, variant });
+}
+
+function initAppModal() {
+    refreshAppModalEls();
+    if (!appModalEls.overlay) return;
+
+    if (appModalEls.overlay.dataset.bound === '1') return;
+    appModalEls.overlay.dataset.bound = '1';
+
+    // Close on overlay click (but not when clicking inside the modal)
+    appModalEls.overlay.addEventListener('click', (e) => {
+        if (e.target === appModalEls.overlay) closeAppModal(false);
+    });
+
+    if (appModalEls.close) {
+        appModalEls.close.addEventListener('click', () => closeAppModal(false));
+    }
+
+    appModalEls.confirm.addEventListener('click', () => closeAppModal(true));
+    appModalEls.cancel.addEventListener('click', () => closeAppModal(false));
+
+    document.addEventListener('keydown', (e) => {
+        if (!appModalState.open) return;
+        if (e.key === 'Escape') closeAppModal(false);
+    });
+}
+
 
 // ===== State =====
 const state = {
@@ -813,7 +925,14 @@ async function openMemoryModal() {
 
 // Action Handlers
 async function handleKillProcess(pid, name) {
-    if (!confirm(`Are you sure you want to KILL process "${name}" (PID: ${pid})?`)) return;
+    const ok = await appConfirm({
+        title: 'Kill process?',
+        message: `Are you sure you want to KILL process "${name}" (PID: ${pid})?`,
+        confirmText: 'Kill',
+        cancelText: 'Cancel',
+        variant: 'danger'
+    });
+    if (!ok) return;
 
     try {
         const res = await fetch(`${CONFIG.API_BASE}/api/processes/${pid}/kill`, {
@@ -823,18 +942,25 @@ async function handleKillProcess(pid, name) {
         const data = await res.json();
 
         if (data.success) {
-            alert('Process killed successfully');
+            await appAlert({ title: 'Done', message: 'Process killed successfully', variant: 'success' });
             openMemoryModal(); // Refresh
         } else {
-            alert('Failed to kill process: ' + data.error);
+            await appAlert({ title: 'Failed', message: 'Failed to kill process: ' + (data.error || 'Unknown error'), variant: 'danger' });
         }
     } catch (error) {
-        alert('Error: ' + error.message);
+        await appAlert({ title: 'Error', message: 'Error: ' + error.message, variant: 'danger' });
     }
 }
 
 async function handleRestartProcess(pid) {
-    if (!confirm(`Restart Minecraft Server (PID: ${pid})? This will kill the process and attempt to start it again.`)) return;
+    const ok = await appConfirm({
+        title: 'Restart Minecraft?',
+        message: `Restart Minecraft Server (PID: ${pid})? This will kill the process and attempt to start it again.`,
+        confirmText: 'Restart',
+        cancelText: 'Cancel',
+        variant: 'danger'
+    });
+    if (!ok) return;
 
     try {
         const res = await fetch(`${CONFIG.API_BASE}/api/services/minecraft/restart`, {
@@ -843,13 +969,13 @@ async function handleRestartProcess(pid) {
         });
         const data = await res.json();
         if (data.success) {
-            alert('Minecraft is restarting...');
+            await appAlert({ title: 'Restarting', message: 'Minecraft is restarting...', variant: 'success' });
             openMemoryModal(); // Refresh
         } else {
-            alert('Failed: ' + data.error);
+            await appAlert({ title: 'Failed', message: 'Failed: ' + (data.error || 'Unknown error'), variant: 'danger' });
         }
     } catch (error) {
-        alert('Error: ' + error.message);
+        await appAlert({ title: 'Error', message: 'Error: ' + error.message, variant: 'danger' });
     }
 }
 
@@ -1048,7 +1174,11 @@ window.startMinecraft = async function () {
         if (res.status === 401 || res.status === 403) {
             markMcNotStarting({ timedOut: false });
             setMcStartButtonState({ visible: true, disabled: false, label: '▶️ Start Minecraft Server' });
-            alert('Unauthorized. Please set your API token and try again.');
+            await appAlert({
+                title: 'Unauthorized',
+                message: 'Unauthorized. Please set your API token and try again.',
+                variant: 'danger'
+            });
             return;
         }
 
@@ -1058,7 +1188,7 @@ window.startMinecraft = async function () {
         // Network/JS error -> allow retry (but don't call it "failed").
         markMcNotStarting({ timedOut: true });
         setMcStartButtonState({ visible: true, disabled: false, label: '↻ Retry start' });
-        alert('Error: ' + error.message);
+        await appAlert({ title: 'Error', message: 'Error: ' + error.message, variant: 'danger' });
     }
 };
 
@@ -1072,6 +1202,9 @@ function closeMemoryModal() {
 function init() {
     // Theme
     initTheme();
+
+    // App modal (custom alerts/confirmations)
+    initAppModal();
 
     // Initial data fetch
     refreshData();
@@ -1137,7 +1270,7 @@ function init() {
                 } else {
                     const value = Number(trimmed);
                     if (!Number.isFinite(value) || value <= 0) {
-                        alert('Please enter a valid positive number (GB).');
+                        appAlert({ title: 'Invalid input', message: 'Please enter a valid positive number (GB).', variant: 'danger' });
                         return;
                     }
                     localStorage.setItem('monthlyBandwidthCapGb', String(value));
