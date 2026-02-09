@@ -78,7 +78,7 @@ describe('Frontend Process Control', () => {
         btn.id = 'btn-start-mc';
         document.body.appendChild(btn);
 
-        window.alert = vi.fn();
+        // Custom app modal replaces native alert().
 
         global.fetch.mockImplementation(async (url) => {
             const u = String(url);
@@ -94,9 +94,21 @@ describe('Frontend Process Control', () => {
         window.getAuthHeaders = () => ({ Authorization: 'Bearer bad' });
 
         window.eval(appJsContent);
-        await window.startMinecraft();
 
-        expect(window.alert).toHaveBeenCalled();
+        const promise = window.startMinecraft();
+        // Let async fetch + modal open run.
+        const overlay = document.getElementById('app-modal');
+        for (let i = 0; i < 20; i++) {
+            await Promise.resolve();
+            if (overlay && overlay.classList.contains('active')) break;
+        }
+
+        const confirmBtn = document.getElementById('app-modal-confirm');
+        if (confirmBtn) {
+            confirmBtn.dispatchEvent(new window.Event('click', { bubbles: true }));
+        }
+
+        await promise;
         expect(global.fetch.mock.calls.some((c) => String(c[0]).includes('/api/services/minecraft/start'))).toBe(true);
         // Button should be re-enabled after auth short-circuit.
         expect(btn.disabled).toBe(false);

@@ -720,6 +720,41 @@ body {
   overflow-y: auto;
 }
 
+/* ===== App Modal (custom alerts/confirmations) ===== */
+.app-modal {
+  max-width: 520px;
+}
+
+.app-modal-header {
+  padding: 18px 20px;
+}
+
+.app-modal-message {
+  margin: 0;
+  color: var(--text-secondary);
+  line-height: 1.5;
+  white-space: pre-wrap;
+}
+
+.app-modal-actions {
+  margin-top: 20px;
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+}
+
+.app-modal[data-variant="danger"] .app-modal-header {
+  border-bottom-color: rgba(239, 68, 68, 0.35);
+}
+
+.app-modal[data-variant="danger"] .modal-title {
+  color: var(--error);
+}
+
+.app-modal[data-variant="success"] .modal-title {
+  color: var(--success);
+}
+
 /* ===== Memory Breakdown ===== */
 .memory-breakdown h3,
 .cpu-breakdown h3,
