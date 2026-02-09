@@ -934,6 +934,12 @@ async function handleKillProcess(pid, name) {
     });
     if (!ok) return;
 
+    // Show loading state
+    refreshAppModalEls();
+    const originalText = appModalEls.confirm.textContent;
+    appModalEls.confirm.disabled = true;
+    appModalEls.confirm.textContent = 'Killing...';
+
     try {
         const res = await fetch(`${CONFIG.API_BASE}/api/processes/${pid}/kill`, {
             method: 'POST',
@@ -942,12 +948,17 @@ async function handleKillProcess(pid, name) {
         const data = await res.json();
 
         if (data.success) {
+            closeAppModal(false); // Close confirmation
             await appAlert({ title: 'Done', message: 'Process killed successfully', variant: 'success' });
             openMemoryModal(); // Refresh
         } else {
+            appModalEls.confirm.disabled = false;
+            appModalEls.confirm.textContent = originalText;
             await appAlert({ title: 'Failed', message: 'Failed to kill process: ' + (data.error || 'Unknown error'), variant: 'danger' });
         }
     } catch (error) {
+        appModalEls.confirm.disabled = false;
+        appModalEls.confirm.textContent = originalText;
         await appAlert({ title: 'Error', message: 'Error: ' + error.message, variant: 'danger' });
     }
 }
@@ -962,6 +973,12 @@ async function handleRestartProcess(pid) {
     });
     if (!ok) return;
 
+    // Show loading state
+    refreshAppModalEls();
+    const originalText = appModalEls.confirm.textContent;
+    appModalEls.confirm.disabled = true;
+    appModalEls.confirm.textContent = 'Restarting...';
+
     try {
         const res = await fetch(`${CONFIG.API_BASE}/api/services/minecraft/restart`, {
             method: 'POST',
@@ -969,12 +986,17 @@ async function handleRestartProcess(pid) {
         });
         const data = await res.json();
         if (data.success) {
+            closeAppModal(false); // Close confirmation
             await appAlert({ title: 'Restarting', message: 'Minecraft is restarting...', variant: 'success' });
             openMemoryModal(); // Refresh
         } else {
+            appModalEls.confirm.disabled = false;
+            appModalEls.confirm.textContent = originalText;
             await appAlert({ title: 'Failed', message: 'Failed: ' + (data.error || 'Unknown error'), variant: 'danger' });
         }
     } catch (error) {
+        appModalEls.confirm.disabled = false;
+        appModalEls.confirm.textContent = originalText;
         await appAlert({ title: 'Error', message: 'Error: ' + error.message, variant: 'danger' });
     }
 }
@@ -1255,7 +1277,7 @@ function init() {
     // Bandwidth card click handler (set monthly cap)
     const bandwidthCard = document.getElementById('bandwidth-card');
     if (bandwidthCard) {
-        bandwidthCard.addEventListener('click', () => {
+        bandwidthCard.addEventListener('click', async () => {
             const current = (() => {
                 try { return localStorage.getItem('monthlyBandwidthCapGb') || ''; } catch { return ''; }
             })();
@@ -1270,7 +1292,7 @@ function init() {
                 } else {
                     const value = Number(trimmed);
                     if (!Number.isFinite(value) || value <= 0) {
-                        appAlert({ title: 'Invalid input', message: 'Please enter a valid positive number (GB).', variant: 'danger' });
+                        await appAlert({ title: 'Invalid input', message: 'Please enter a valid positive number (GB).', variant: 'danger' });
                         return;
                     }
                     localStorage.setItem('monthlyBandwidthCapGb', String(value));
