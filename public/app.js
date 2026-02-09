@@ -729,8 +729,6 @@ async function loadDiskBreakdown(mount = '/') {
 
         const entries = Array.isArray(data.entries) ? data.entries : [];
 
-        stopDiskBreakdownElapsedTimer();
-
         const statusText = entries.length
             ? `Top paths for ${data.mount} (depth ${data.depth}) — cached`
             : 'No data.';
@@ -753,7 +751,6 @@ async function loadDiskBreakdown(mount = '/') {
     } catch (err) {
         if (err?.name === 'AbortError') return;
         console.error(err);
-        stopDiskBreakdownElapsedTimer();
         const msg = err?.message || 'Error scanning disk breakdown.';
         if (diskModalElements.breakdownStatusText) {
             diskModalElements.breakdownStatusText.textContent = msg;
