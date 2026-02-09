@@ -691,6 +691,7 @@ body {
   align-items: center;
   padding: 20px 24px;
   border-bottom: 1px solid var(--border-color);
+  position: relative;
 }
 
 .modal-title {
@@ -698,9 +699,13 @@ body {
   font-weight: 600;
   color: var(--text-primary);
   margin: 0;
+  flex: 1;
+  text-align: center;
 }
 
 .modal-close {
+  position: absolute;
+  right: 24px;
   background: none;
   border: none;
   font-size: 1.75rem;
@@ -709,6 +714,7 @@ body {
   line-height: 1;
   padding: 0;
   transition: color 0.2s ease;
+  z-index: 1;
 }
 
 .modal-close:hover {
@@ -921,6 +927,22 @@ body {
 
 .btn-restart:hover {
   background: rgba(59, 130, 246, 0.2);
+}
+
+.btn-secondary {
+  background: var(--bg-secondary);
+  color: var(--text-primary);
+  border: 1px solid var(--border-color);
+  padding: 10px 16px;
+  border-radius: var(--border-radius-sm);
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.btn-secondary:hover {
+  background: var(--bg-card-hover);
+  border-color: var(--text-muted);
 }
 
 .btn-primary {
