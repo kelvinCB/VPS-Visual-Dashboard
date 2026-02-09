@@ -572,7 +572,9 @@ const diskModalElements = {
     note: document.getElementById('disk-note'),
     breakdownBtn: document.getElementById('disk-breakdown-btn'),
     breakdownList: document.getElementById('disk-breakdown-list'),
-    breakdownStatus: document.getElementById('disk-breakdown-status')
+    breakdownStatus: document.getElementById('disk-breakdown-status'),
+    breakdownStatusText: document.getElementById('disk-breakdown-status-text'),
+    breakdownElapsed: document.getElementById('disk-breakdown-elapsed')
 };
 
 let diskModalLastFocus = null;
@@ -606,6 +608,7 @@ function closeDiskModal() {
     try { diskBreakdownController?.abort(); } catch { /* ignore */ }
     diskBreakdownController = null;
     diskBreakdownLastPromise = null;
+    stopDiskBreakdownElapsedTimer();
 
     if (diskModalElements.breakdownBtn) diskModalElements.breakdownBtn.disabled = false;
 
@@ -666,6 +669,37 @@ async function openDiskModal() {
 
 let diskBreakdownController = null;
 let diskBreakdownLastPromise = null;
+let diskBreakdownElapsedTimer = null;
+let diskBreakdownStartedAtMs = null;
+
+function stopDiskBreakdownElapsedTimer() {
+    if (diskBreakdownElapsedTimer) {
+        clearInterval(diskBreakdownElapsedTimer);
+        diskBreakdownElapsedTimer = null;
+    }
+    diskBreakdownStartedAtMs = null;
+
+    if (diskModalElements.breakdownElapsed) {
+        diskModalElements.breakdownElapsed.textContent = '';
+    }
+}
+
+function startDiskBreakdownElapsedTimer() {
+    stopDiskBreakdownElapsedTimer();
+    diskBreakdownStartedAtMs = Date.now();
+
+    const el = diskModalElements.breakdownElapsed;
+    if (!el) return;
+
+    const tick = () => {
+        if (!diskBreakdownStartedAtMs) return;
+        const seconds = (Date.now() - diskBreakdownStartedAtMs) / 1000;
+        el.textContent = `(${seconds.toFixed(1)}s)`;
+    };
+
+    tick();
+    diskBreakdownElapsedTimer = setInterval(tick, 100);
+}
 
 async function loadDiskBreakdown(mount = '/') {
     if (!diskModalElements.breakdownStatus || !diskModalElements.breakdownList) return;
@@ -676,7 +710,13 @@ async function loadDiskBreakdown(mount = '/') {
 
     if (diskModalElements.breakdownBtn) diskModalElements.breakdownBtn.disabled = true;
 
-    diskModalElements.breakdownStatus.textContent = 'Scanning...';
+    if (diskModalElements.breakdownStatusText) {
+        diskModalElements.breakdownStatusText.textContent = 'Scanning';
+    } else {
+        diskModalElements.breakdownStatus.textContent = 'Scanning...';
+    }
+
+    startDiskBreakdownElapsedTimer();
     diskModalElements.breakdownList.innerHTML = '';
 
     try {
@@ -689,9 +729,15 @@ async function loadDiskBreakdown(mount = '/') {
 
         const entries = Array.isArray(data.entries) ? data.entries : [];
 
-        diskModalElements.breakdownStatus.textContent = entries.length
+        const statusText = entries.length
             ? `Top paths for ${data.mount} (depth ${data.depth}) — cached`
             : 'No data.';
+
+        if (diskModalElements.breakdownStatusText) {
+            diskModalElements.breakdownStatusText.textContent = statusText;
+        } else {
+            diskModalElements.breakdownStatus.textContent = statusText;
+        }
 
         // DOM-based rendering (no innerHTML) to avoid XSS.
         for (const e of entries) {
@@ -705,8 +751,14 @@ async function loadDiskBreakdown(mount = '/') {
     } catch (err) {
         if (err?.name === 'AbortError') return;
         console.error(err);
-        diskModalElements.breakdownStatus.textContent = 'Error scanning disk breakdown.';
+        const msg = err?.message || 'Error scanning disk breakdown.';
+        if (diskModalElements.breakdownStatusText) {
+            diskModalElements.breakdownStatusText.textContent = msg;
+        } else {
+            diskModalElements.breakdownStatus.textContent = msg;
+        }
     } finally {
+        stopDiskBreakdownElapsedTimer();
         if (diskModalElements.breakdownBtn) diskModalElements.breakdownBtn.disabled = false;
     }
 }
