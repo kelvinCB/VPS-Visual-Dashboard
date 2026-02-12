@@ -1,0 +1,21 @@
+name: Kimi PR Co-Review
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened, ready_for_review]
+
+permissions:
+  contents: read
+  pull-requests: write
+
+concurrency:
+  group: kimi-co-review-pr-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+
+jobs:
+  kimi:
+    uses: kelvinCB/github-automation/.github/workflows/kimi-review-reusable.yml@main
+    with:
+      marker_prefix: kimi-action-review
+    secrets:
+      MOONSHOT_API_KEY: ${{ secrets.MOONSHOT_API_KEY }}
