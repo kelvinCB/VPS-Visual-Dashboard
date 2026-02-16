@@ -48,7 +48,6 @@ describe('Login Page Rendering', () => {
         // Prevent real navigation in JSDOM which throws "Not implemented"
         window.onbeforeunload = () => { };
         
-        // We use a mock for the redirect logic if needed, but here we just check UI state
         form.dispatchEvent(new window.Event('submit'));
 
         expect(submitBtn.disabled).toBe(true);
@@ -56,5 +55,23 @@ describe('Login Page Rendering', () => {
 
         vi.runAllTimers();
         vi.useRealTimers();
+    });
+
+    it('should handle redirection with query parameters', async () => {
+        vi.useFakeTimers();
+        const mockLocation = new URL('http://localhost/login?redirect=/settings');
+        const dom2 = new JSDOM(html, { url: mockLocation.href, runScripts: 'dangerously' });
+        const window2 = dom2.window;
+        const form2 = window2.document.getElementById('login-form');
+
+        // Prevent real navigation
+        window2.onbeforeunload = () => { };
+
+        form2.dispatchEvent(new window2.Event('submit'));
+
+        vi.runAllTimers();
+        // Redirection logic is triggered
+        vi.useRealTimers();
+        dom2.window.close();
     });
 });

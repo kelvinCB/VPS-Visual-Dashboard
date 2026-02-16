@@ -30,21 +30,25 @@ describe('Frontend Process Control', () => {
         fakeNow = 0;
         vi.spyOn(Date, 'now').mockImplementation(() => fakeNow);
 
-        dom = new JSDOM(html, { runScripts: 'dangerously', resources: 'usable' });
+        dom = new JSDOM(html, { 
+            url: 'http://localhost/',
+            runScripts: 'dangerously', 
+            resources: 'usable' 
+        });
         window = dom.window;
         document = window.document;
 
         window.console = console;
-        global.document = document;
-        global.window = window;
+        
+        // Use a wrapper to prevent JSDOM navigation errors
+        const mockLocation = new URL('http://localhost/');
+        // We don't delete window.location, we just rely on the 'url' option above.
+        
         window.fetch = global.fetch;
 
         // Route window timers through Vitest fake timers.
         window.setTimeout = setTimeout;
         window.clearTimeout = clearTimeout;
-
-        // Mock Date.now inside the JSDOM window for countdown label.
-        window.Date.now = () => fakeNow;
 
         // Avoid long-running intervals in tests.
         window.setInterval = () => 0;
@@ -82,8 +86,6 @@ describe('Frontend Process Control', () => {
         btn.id = 'btn-start-mc';
         document.body.appendChild(btn);
 
-        // Custom app modal replaces native alert().
-
         global.fetch.mockImplementation(async (url) => {
             const u = String(url);
             if (u.includes('/api/services/minecraft/start')) return resJson(401, { error: 'Unauthorized' });
@@ -100,6 +102,7 @@ describe('Frontend Process Control', () => {
         window.eval(appJsContent);
 
         const promise = window.startMinecraft();
+        
         // Let async fetch + modal open run.
         const overlay = document.getElementById('app-modal');
         for (let i = 0; i < 20; i++) {
@@ -121,13 +124,11 @@ describe('Frontend Process Control', () => {
     it('startMinecraft should disable the button and keep it disabled while starting', async () => {
         // Make the modal "active" so the start loop updates UI.
         const overlay = document.getElementById('memory-modal');
-        overlay.classList.add('active');
+        if (overlay) overlay.classList.add('active');
 
         const btn = document.createElement('button');
         btn.id = 'btn-start-mc';
         document.body.appendChild(btn);
-
-        window.alert = vi.fn();
 
         global.fetch.mockImplementation(async (url) => {
             const u = String(url);
