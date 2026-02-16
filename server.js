@@ -14,7 +14,7 @@ const PORT = process.env.PORT || 7847;
 // Middleware
 app.use(cors());
 app.use(express.json());
-app.use(express.static(path.join(__dirname, 'public')));
+app.use(express.static(path.join(__dirname, 'public'), { extensions: ['html'] }));
 
 // ===== Optional API Auth (Bearer token)
 // If DASHBOARD_API_TOKEN is not set, all endpoints behave as they do today.
@@ -968,11 +968,6 @@ app.post('/api/services/minecraft/restart', requireApiTokenIfConfigured, async (
 // Health check endpoint
 app.get('/api/health', (req, res) => {
     res.json({ status: 'ok', timestamp: new Date().toISOString() });
-});
-
-// Serve login page
-app.get('/login', (req, res) => {
-    res.sendFile(path.join(__dirname, 'public', 'login.html'));
 });
 
 // Serve frontend for all other routes

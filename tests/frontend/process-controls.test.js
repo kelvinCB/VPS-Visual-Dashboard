@@ -68,7 +68,11 @@ describe('Frontend Process Control', () => {
     });
 
     afterEach(() => {
-        try { dom?.window?.close(); } catch { /* ignore */ }
+        try {
+            // Clear any lingering timers from app.js loops
+            if (window.clearMcStartLoop) window.clearMcStartLoop();
+            dom?.window?.close();
+        } catch { /* ignore */ }
         vi.useRealTimers();
         vi.clearAllMocks();
     });

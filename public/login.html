@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="en" data-theme="purple">
 
 <head>
   <meta charset="UTF-8">
@@ -12,6 +12,32 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <style>
+    .btn-login:disabled {
+      opacity: 0.7;
+      cursor: not-allowed;
+    }
+    .btn-login.is-loading {
+      position: relative;
+      color: transparent !important;
+    }
+    .btn-login.is-loading::after {
+      content: "";
+      position: absolute;
+      width: 20px;
+      height: 20px;
+      top: 50%;
+      left: 50%;
+      margin: -10px 0 0 -10px;
+      border: 3px solid rgba(255, 255, 255, 0.3);
+      border-radius: 50%;
+      border-top-color: #fff;
+      animation: spin 0.8s linear infinite;
+    }
+    @keyframes spin {
+      to { transform: rotate(360deg); }
+    }
+  </style>
 </head>
 
 <body>
@@ -26,29 +52,45 @@
       <form class="login-form" id="login-form">
         <div class="form-group">
           <label class="form-label" for="email">Email address</label>
-          <input class="form-input" type="email" id="email" placeholder="name@company.com" required autofocus>
+          <input class="form-input" type="email" id="email" placeholder="name@company.com" 
+            required autofocus autocomplete="username email" autocapitalize="off" spellcheck="false">
         </div>
 
         <div class="form-group">
           <label class="form-label" for="password">Password</label>
-          <input class="form-input" type="password" id="password" placeholder="••••••••" required>
+          <input class="form-input" type="password" id="password" placeholder="••••••••" 
+            required autocomplete="current-password" autocapitalize="off" spellcheck="false">
         </div>
 
-        <button class="btn-login" type="submit">Sign In</button>
+        <button class="btn-login" type="submit" id="submit-btn">Sign In</button>
       </form>
 
       <footer class="login-footer">
-        <p>Don't have an account? <a href="#" class="login-link">Contact Admin</a></p>
+        <p>Don't have an account? <a href="mailto:admin@example.com" class="login-link">Contact Admin</a></p>
       </footer>
     </div>
   </div>
 
   <script>
-    document.getElementById('login-form').addEventListener('submit', (e) => {
+    const loginForm = document.getElementById('login-form');
+    const submitBtn = document.getElementById('submit-btn');
+
+    loginForm.addEventListener('submit', (e) => {
       e.preventDefault();
-      // This is a UI/UX prototype, so we just redirect to the dashboard.
-      // In a real scenario, this would call the backend login API.
-      window.location.href = '/';
+      
+      // UI Feedback
+      submitBtn.disabled = true;
+      submitBtn.classList.add('is-loading');
+
+      // Preserve redirection context
+      const params = new URLSearchParams(window.location.search);
+      const redirectPath = params.get('redirect') || '/';
+
+      // Simulate API call
+      setTimeout(() => {
+        console.log('Login successful, redirecting to:', redirectPath);
+        window.location.href = redirectPath;
+      }, 800);
     });
   </script>
 </body>
