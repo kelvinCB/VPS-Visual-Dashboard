@@ -10,6 +10,7 @@ A modern, real-time dashboard to monitor your VPS server metrics. Inspired by Ho
 - 🎨 **Modern Dark Theme** - Beautiful Hostinger-inspired UI
 - 📈 **Live Charts** - Smooth line and circular charts
 - 📱 **Responsive Design** - Works on desktop and mobile
+- 🔐 **Login Page** - UI/UX prototype for authentication
 - ⚡ **Lightweight** - No heavy frameworks, vanilla JS
 
 ## Quick Start

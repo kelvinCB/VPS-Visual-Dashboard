@@ -1,0 +1,56 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="description" content="Taigels VPS Dashboard - Login">
+  <meta name="theme-color" content="#7c3aed">
+  <title>Login - Taigels VPS Dashboard</title>
+  <link rel="icon" href="/icons/icon.svg" type="image/svg+xml">
+  <link rel="stylesheet" href="styles.css">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+</head>
+
+<body>
+  <div class="login-container">
+    <div class="login-card">
+      <header class="login-header">
+        <img class="login-logo" src="/icons/icon.svg" alt="Taigels VPS" />
+        <h1 class="login-title">Welcome Back</h1>
+        <p class="login-subtitle">Sign in to your VPS Dashboard</p>
+      </header>
+
+      <form class="login-form" id="login-form">
+        <div class="form-group">
+          <label class="form-label" for="email">Email address</label>
+          <input class="form-input" type="email" id="email" placeholder="name@company.com" required autofocus>
+        </div>
+
+        <div class="form-group">
+          <label class="form-label" for="password">Password</label>
+          <input class="form-input" type="password" id="password" placeholder="••••••••" required>
+        </div>
+
+        <button class="btn-login" type="submit">Sign In</button>
+      </form>
+
+      <footer class="login-footer">
+        <p>Don't have an account? <a href="#" class="login-link">Contact Admin</a></p>
+      </footer>
+    </div>
+  </div>
+
+  <script>
+    document.getElementById('login-form').addEventListener('submit', (e) => {
+      e.preventDefault();
+      // This is a UI/UX prototype, so we just redirect to the dashboard.
+      // In a real scenario, this would call the backend login API.
+      window.location.href = '/';
+    });
+  </script>
+</body>
+
+</html>
