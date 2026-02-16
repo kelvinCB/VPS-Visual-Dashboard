@@ -18,6 +18,18 @@ describe('Login Page Rendering', () => {
         });
         window = dom.window;
         document = window.document;
+
+        // Mock matchMedia for JSDOM
+        window.matchMedia = vi.fn().mockImplementation(query => ({
+            matches: false,
+            media: query,
+            onchange: null,
+            addListener: vi.fn(),
+            removeListener: vi.fn(),
+            addEventListener: vi.fn(),
+            removeEventListener: vi.fn(),
+            dispatchEvent: vi.fn(),
+        }));
     });
 
     afterEach(() => {
@@ -32,12 +44,14 @@ describe('Login Page Rendering', () => {
         expect(document.getElementById('submit-btn')).not.toBeNull();
     });
 
-    it('should have correct autocomplete attributes for security', () => {
+    it('should have correct attributes for security and accessibility', () => {
         const emailInput = document.getElementById('email');
         const passwordInput = document.getElementById('password');
 
-        expect(emailInput.getAttribute('autocomplete')).toMatch(/email/i);
+        expect(emailInput.getAttribute('autocomplete')).toBe('email');
+        expect(emailInput.getAttribute('name')).toBe('email');
         expect(passwordInput.getAttribute('autocomplete')).toBe('current-password');
+        expect(passwordInput.getAttribute('name')).toBe('password');
     });
 
     it('should show loading state on form submit', async () => {
@@ -45,10 +59,10 @@ describe('Login Page Rendering', () => {
         const form = document.getElementById('login-form');
         const submitBtn = document.getElementById('submit-btn');
 
-        // Prevent real navigation in JSDOM which throws "Not implemented"
+        // Prevent real navigation in JSDOM
         window.onbeforeunload = () => { };
         
-        form.dispatchEvent(new window.Event('submit'));
+        form.dispatchEvent(new window.Event('submit', { bubbles: true, cancelable: true }));
 
         expect(submitBtn.disabled).toBe(true);
         expect(submitBtn.classList.contains('is-loading')).toBe(true);
@@ -59,18 +73,36 @@ describe('Login Page Rendering', () => {
 
     it('should handle redirection with query parameters', async () => {
         vi.useFakeTimers();
-        const mockLocation = new URL('http://localhost/login?redirect=/settings');
-        const dom2 = new JSDOM(html, { url: mockLocation.href, runScripts: 'dangerously' });
+        // Create a new JSDOM with specific redirect param
+        const redirectUrl = 'http://localhost/login?redirect=/settings';
+        const dom2 = new JSDOM(html, { 
+            url: redirectUrl, 
+            runScripts: 'dangerously',
+            resources: 'usable'
+        });
         const window2 = dom2.window;
+        
+        // Mock matchMedia for dom2
+        window2.matchMedia = vi.fn().mockImplementation(query => ({
+            matches: false,
+            media: query,
+            onchange: null,
+            addListener: vi.fn(),
+            removeListener: vi.fn(),
+            addEventListener: vi.fn(),
+            removeEventListener: vi.fn(),
+            dispatchEvent: vi.fn(),
+        }));
+
         const form2 = window2.document.getElementById('login-form');
 
         // Prevent real navigation
         window2.onbeforeunload = () => { };
 
-        form2.dispatchEvent(new window2.Event('submit'));
+        form2.dispatchEvent(new window2.Event('submit', { bubbles: true, cancelable: true }));
 
         vi.runAllTimers();
-        // Redirection logic is triggered
+        // Logic reached
         vi.useRealTimers();
         dom2.window.close();
     });

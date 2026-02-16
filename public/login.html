@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="en" data-theme="purple">
+<html lang="en">
 
 <head>
   <meta charset="UTF-8">
@@ -37,6 +37,13 @@
     @keyframes spin {
       to { transform: rotate(360deg); }
     }
+    .error-msg {
+      color: var(--error);
+      font-size: 0.875rem;
+      margin-top: 8px;
+      text-align: center;
+      display: none;
+    }
   </style>
 </head>
 
@@ -52,17 +59,18 @@
       <form class="login-form" id="login-form">
         <div class="form-group">
           <label class="form-label" for="email">Email address</label>
-          <input class="form-input" type="email" id="email" placeholder="name@company.com" 
-            required autofocus autocomplete="username email" autocapitalize="off" spellcheck="false">
+          <input class="form-input" type="email" id="email" name="email" placeholder="name@company.com" 
+            required autofocus autocomplete="email" autocapitalize="off" spellcheck="false">
         </div>
 
         <div class="form-group">
           <label class="form-label" for="password">Password</label>
-          <input class="form-input" type="password" id="password" placeholder="••••••••" 
+          <input class="form-input" type="password" id="password" name="password" placeholder="••••••••" 
             required autocomplete="current-password" autocapitalize="off" spellcheck="false">
         </div>
 
         <button class="btn-login" type="submit" id="submit-btn">Sign In</button>
+        <div id="error-msg" class="error-msg">Invalid email or password</div>
       </form>
 
       <footer class="login-footer">
@@ -72,24 +80,52 @@
   </div>
 
   <script>
+    // Initialize theme based on preference or system
+    // Handle JSDOM environment where matchMedia might be missing
+    const getSystemTheme = () => {
+      try {
+        if (typeof window !== 'undefined' && window.matchMedia) {
+          return window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
+        }
+      } catch (e) {}
+      return 'dark';
+    };
+
+    const savedTheme = localStorage.getItem('theme') || getSystemTheme();
+    document.documentElement.dataset.theme = savedTheme === 'light' ? 'light' : 'purple';
+
     const loginForm = document.getElementById('login-form');
     const submitBtn = document.getElementById('submit-btn');
+    const errorMsg = document.getElementById('error-msg');
 
     loginForm.addEventListener('submit', (e) => {
+      if (submitBtn.disabled) return;
       e.preventDefault();
       
-      // UI Feedback
+      errorMsg.style.display = 'none';
       submitBtn.disabled = true;
       submitBtn.classList.add('is-loading');
 
-      // Preserve redirection context
+      // Preserve redirection context with security check
       const params = new URLSearchParams(window.location.search);
-      const redirectPath = params.get('redirect') || '/';
+      let redirectPath = params.get('redirect') || '/';
+      
+      // P1 Fix: Open Redirect Vulnerability
+      if (!redirectPath.startsWith('/') || redirectPath.startsWith('//')) {
+        redirectPath = '/';
+      }
 
-      // Simulate API call
+      // Simulate API call with error handling
       setTimeout(() => {
-        console.log('Login successful, redirecting to:', redirectPath);
-        window.location.href = redirectPath;
+        // Simple mock validation for prototype
+        const email = document.getElementById('email').value;
+        if (email.includes('error')) {
+          errorMsg.style.display = 'block';
+          submitBtn.disabled = false;
+          submitBtn.classList.remove('is-loading');
+        } else {
+          window.location.href = redirectPath;
+        }
       }, 800);
     });
   </script>

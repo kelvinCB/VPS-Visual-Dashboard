@@ -419,8 +419,7 @@ body {
   left: 50%;
   transform: translate(-50%, -50%);
   display: flex;
-  align-items: baseline;
-  gap: 2px;
+  align-items: baseline; gap: 2px;
 }
 
 .disk-percentage span:first-child {
@@ -830,8 +829,7 @@ body {
 }
 
 .scan-dots {
-  display: inline-flex;
-  gap: 2px;
+  display: inline-flex; gap: 2px;
 }
 
 .scan-dots .dot {
@@ -1042,7 +1040,10 @@ body.is-ready .metrics-grid .metric-card:nth-child(6) { transition-delay: 240ms;
   width: 100%;
   max-width: 400px;
   box-shadow: var(--shadow-lg);
-  animation: fadeIn 0.5s ease-out;
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .login-card { animation: fadeIn 0.5s ease-out; }
 }
 
 @keyframes fadeIn {
@@ -1105,7 +1106,7 @@ body.is-ready .metrics-grid .metric-card:nth-child(6) { transition-delay: 240ms;
 .form-input:focus {
   outline: none;
   border-color: var(--accent-primary);
-  box-shadow: 0 0 0 2px rgba(124, 58, 237, 0.2);
+  box-shadow: 0 0 0 2px color-mix(in srgb, var(--accent-primary) 20%, transparent);
 }
 
 .btn-login {
