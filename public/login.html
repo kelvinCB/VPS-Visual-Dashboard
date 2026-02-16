@@ -69,8 +69,8 @@
             required autocomplete="current-password" autocapitalize="off" spellcheck="false">
         </div>
 
-        <button class="btn-login" type="submit" id="submit-btn">Sign In</button>
-        <div id="error-msg" class="error-msg">Invalid email or password</div>
+        <button class="btn-login" type="submit" id="submit-btn" aria-live="polite">Sign In</button>
+        <div id="error-msg" class="error-msg" aria-live="polite">Invalid email or password</div>
       </form>
 
       <footer class="login-footer">
@@ -81,7 +81,6 @@
 
   <script>
     // Initialize theme based on preference or system
-    // Handle JSDOM environment where matchMedia might be missing
     const getSystemTheme = () => {
       try {
         if (typeof window !== 'undefined' && window.matchMedia) {
@@ -105,24 +104,30 @@
       errorMsg.style.display = 'none';
       submitBtn.disabled = true;
       submitBtn.classList.add('is-loading');
+      submitBtn.setAttribute('aria-busy', 'true');
+      submitBtn.setAttribute('aria-label', 'Signing in...');
 
-      // Preserve redirection context with security check
+      // Get redirection parameter
       const params = new URLSearchParams(window.location.search);
       let redirectPath = params.get('redirect') || '/';
       
       // P1 Fix: Open Redirect Vulnerability
-      if (!redirectPath.startsWith('/') || redirectPath.startsWith('//')) {
+      // Strict regex validation: only allow internal paths starting with / and containing safe chars.
+      // Prevents: //evil.com, /\evil.com, /%5C%5C, etc.
+      const safePathRegex = /^\/[a-zA-Z0-9\-\._\/]*$/;
+      if (!safePathRegex.test(redirectPath) || redirectPath.includes('//') || redirectPath.includes('\\')) {
         redirectPath = '/';
       }
 
       // Simulate API call with error handling
       setTimeout(() => {
-        // Simple mock validation for prototype
         const email = document.getElementById('email').value;
         if (email.includes('error')) {
           errorMsg.style.display = 'block';
           submitBtn.disabled = false;
           submitBtn.classList.remove('is-loading');
+          submitBtn.removeAttribute('aria-busy');
+          submitBtn.removeAttribute('aria-label');
         } else {
           window.location.href = redirectPath;
         }
