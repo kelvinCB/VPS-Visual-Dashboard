@@ -14,7 +14,13 @@ const PORT = process.env.PORT || 7847;
 // Middleware
 app.use(cors());
 app.use(express.json());
-app.use(express.static(path.join(__dirname, 'public'), { extensions: ['html'] }));
+
+// Explicit Login Route (before static/catch-all)
+app.get('/login', (req, res) => {
+    res.sendFile(path.join(__dirname, 'public', 'login.html'));
+});
+
+app.use(express.static(path.join(__dirname, 'public')));
 
 // ===== Optional API Auth (Bearer token)
 // If DASHBOARD_API_TOKEN is not set, all endpoints behave as they do today.
