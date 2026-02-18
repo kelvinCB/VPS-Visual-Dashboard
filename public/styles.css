@@ -1109,6 +1109,11 @@ body.is-ready .metrics-grid .metric-card:nth-child(6) { transition-delay: 240ms;
   box-shadow: 0 0 0 2px color-mix(in srgb, var(--accent-primary) 20%, transparent);
 }
 
+.form-input.is-invalid {
+  border-color: var(--error);
+  box-shadow: 0 0 0 2px color-mix(in srgb, var(--error) 18%, transparent);
+}
+
 .btn-login {
   background: var(--accent-primary);
   color: white;

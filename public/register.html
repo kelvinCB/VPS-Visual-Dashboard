@@ -13,17 +13,17 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
   <style>
-    .btn-login:disabled {
+    .btn-submit:disabled {
       opacity: 0.7;
       cursor: not-allowed;
     }
 
-    .btn-login.is-loading {
+    .btn-submit.is-loading {
       position: relative;
       color: transparent !important;
     }
 
-    .btn-login.is-loading::after {
+    .btn-submit.is-loading::after {
       content: "";
       position: absolute;
       width: 20px;
@@ -101,10 +101,11 @@
             <input class="form-input" type="password" id="confirmPassword" name="confirmPassword"
               placeholder="••••••••" required autocomplete="new-password" autocapitalize="off" spellcheck="false"
               minlength="8">
+            <p class="hint" id="password-match-hint" aria-live="polite"></p>
           </div>
         </div>
 
-        <button class="btn-login" type="submit" id="submit-btn" aria-live="polite">Create account</button>
+        <button class="btn-submit" type="submit" id="submit-btn" aria-live="polite">Create account</button>
         <div id="error-msg" class="error-msg" aria-live="polite"></div>
       </form>
 
@@ -125,12 +126,24 @@
       return 'dark';
     };
 
-    const savedTheme = localStorage.getItem('theme') || getSystemTheme();
-    document.documentElement.dataset.theme = savedTheme === 'light' ? 'light' : 'purple';
+    let savedTheme = null;
+    try {
+      savedTheme = localStorage.getItem('theme');
+    } catch (e) {
+      // Safari private mode / blocked storage can throw SecurityError/QuotaExceededError
+      savedTheme = null;
+    }
+
+    const resolvedTheme = savedTheme || getSystemTheme();
+    document.documentElement.dataset.theme = resolvedTheme === 'light' ? 'light' : 'purple';
 
     const registerForm = document.getElementById('register-form');
     const submitBtn = document.getElementById('submit-btn');
     const errorMsg = document.getElementById('error-msg');
+    const emailInput = document.getElementById('email');
+    const passwordInput = document.getElementById('password');
+    const confirmPasswordInput = document.getElementById('confirmPassword');
+    const passwordMatchHint = document.getElementById('password-match-hint');
 
     function showError(message) {
       errorMsg.textContent = message;
@@ -142,17 +155,54 @@
       errorMsg.style.display = 'none';
     }
 
+    function setPasswordMatchState() {
+      const password = passwordInput.value;
+      const confirmPassword = confirmPasswordInput.value;
+
+      // Reset
+      confirmPasswordInput.classList.remove('is-invalid');
+      passwordMatchHint.textContent = '';
+
+      if (!confirmPassword) {
+        confirmPasswordInput.setCustomValidity('');
+        return true;
+      }
+
+      if (password !== confirmPassword) {
+        confirmPasswordInput.classList.add('is-invalid');
+        confirmPasswordInput.setCustomValidity('Passwords do not match');
+        passwordMatchHint.textContent = 'Passwords do not match';
+        passwordMatchHint.style.color = 'var(--error)';
+        return false;
+      }
+
+      confirmPasswordInput.setCustomValidity('');
+      passwordMatchHint.textContent = 'Passwords match';
+      passwordMatchHint.style.color = 'var(--success)';
+      return true;
+    }
+
+    // Live validation (UX)
+    passwordInput.addEventListener('input', setPasswordMatchState);
+    confirmPasswordInput.addEventListener('input', setPasswordMatchState);
+    confirmPasswordInput.addEventListener('blur', setPasswordMatchState);
+
     registerForm.addEventListener('submit', (e) => {
       if (submitBtn.disabled) return;
       e.preventDefault();
       clearError();
 
-      const email = document.getElementById('email').value.trim();
-      const password = document.getElementById('password').value;
-      const confirmPassword = document.getElementById('confirmPassword').value;
+      const email = emailInput.value.trim();
+      const password = passwordInput.value;
 
       if (!email) {
         showError('Email is required');
+        return;
+      }
+
+      // P2: Use native type="email" validation
+      if (!emailInput.checkValidity()) {
+        showError('Please enter a valid email address');
         return;
       }
 
@@ -161,7 +211,7 @@
         return;
       }
 
-      if (password !== confirmPassword) {
+      if (!setPasswordMatchState()) {
         showError('Passwords do not match');
         return;
       }
