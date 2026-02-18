@@ -19,7 +19,7 @@ Complete testing documentation for VPS Visual Dashboard.
 
 | Category | Tests | Framework |
 |----------|-------|-----------|
-|| Backend Unit | 20 | Vitest |
+| Backend Unit | 20 | Vitest |
 | Frontend Unit | 19 | Vitest + JSDOM |
 | E2E | 19 | Playwright |
 | **Total** | **58** | - |
@@ -110,7 +110,9 @@ Location: `tests/frontend/`
 |------|-------|-------------|
 | `app.test.js` | 10 | Configuration, formatting helpers |
 | `rendering.test.js` | 8 | DOM structure, initial state |
-| `process-controls.test.js` | 1 | Process control buttons visibility (JSDOM) |
+| `login-rendering.test.js` | 4 | Login page rendering + basic behaviors (JSDOM) |
+| `register-rendering.test.js` | 3 | Register page rendering + validation (JSDOM) |
+| `process-controls.test.js` | 2 | Process control buttons visibility (JSDOM) |
 
 **What's tested:**
 - Configuration constants (refresh intervals)
