@@ -37,6 +37,10 @@
       animation: spin 0.8s linear infinite;
     }
 
+    .btn-submit.is-success {
+      background: var(--success);
+    }
+
     @keyframes spin {
       to {
         transform: rotate(360deg);
@@ -81,7 +85,7 @@
         <p class="login-subtitle">VPS Dashboard access (front-end only)</p>
       </header>
 
-      <form class="login-form" id="register-form" action="/login" method="GET">
+      <form class="login-form" id="register-form" action="/register" method="POST">
         <div class="form-group">
           <label class="form-label" for="email">Email address</label>
           <input class="form-input" type="email" id="email" name="email" placeholder="name@company.com" required
@@ -224,8 +228,16 @@
 
       // Front-end only simulation (no API integration in this phase)
       setTimeout(() => {
+        // Improve success perception before redirect
+        submitBtn.classList.remove('is-loading');
+        submitBtn.classList.add('is-success');
+        submitBtn.textContent = 'Account created! Redirecting…';
+        submitBtn.setAttribute('aria-label', 'Account created. Redirecting to login...');
+
         // After success, send user to login with an optional redirect back home
-        window.location.href = '/login?redirect=/';
+        setTimeout(() => {
+          window.location.href = '/login?redirect=/';
+        }, 350);
       }, 800);
     });
   </script>
