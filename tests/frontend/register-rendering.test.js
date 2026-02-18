@@ -79,6 +79,12 @@ describe('Register Page Rendering', () => {
     expect(submitBtn.disabled).toBe(true);
     expect(submitBtn.classList.contains('is-loading')).toBe(true);
 
+    // Flush both the initial submit timeout + the nested redirect timeout
     vi.runAllTimers();
+
+    // Assert lifecycle completes (success cue shown before navigation)
+    expect(submitBtn.classList.contains('is-loading')).toBe(false);
+    expect(submitBtn.classList.contains('is-success')).toBe(true);
+    expect(submitBtn.textContent.toLowerCase()).toContain('redirect');
   });
 });
