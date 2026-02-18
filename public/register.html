@@ -159,7 +159,7 @@
       errorMsg.style.display = 'none';
     }
 
-    function setPasswordMatchState() {
+    function setPasswordMatchState({ requireConfirmation = false } = {}) {
       const password = passwordInput.value;
       const confirmPassword = confirmPasswordInput.value;
 
@@ -169,7 +169,13 @@
       passwordMatchHint.textContent = '';
 
       if (!confirmPassword) {
+        // On normal typing we don't want to show an error immediately,
+        // but on submit we must require confirmation.
         confirmPasswordInput.setCustomValidity('');
+        if (requireConfirmation) {
+          confirmPasswordInput.setCustomValidity('Please confirm your password');
+          return false;
+        }
         return true;
       }
 
@@ -188,9 +194,9 @@
     }
 
     // Live validation (UX)
-    passwordInput.addEventListener('input', setPasswordMatchState);
-    confirmPasswordInput.addEventListener('input', setPasswordMatchState);
-    confirmPasswordInput.addEventListener('blur', setPasswordMatchState);
+    passwordInput.addEventListener('input', () => setPasswordMatchState());
+    confirmPasswordInput.addEventListener('input', () => setPasswordMatchState());
+    confirmPasswordInput.addEventListener('blur', () => setPasswordMatchState());
 
     registerForm.addEventListener('submit', (e) => {
       if (submitBtn.disabled) return;
@@ -205,7 +211,7 @@
         return;
       }
 
-      // P2: Use native type="email" validation
+      // Note: rely on native type="email" validation
       if (!emailInput.checkValidity()) {
         showError('Please enter a valid email address');
         return;
@@ -216,8 +222,9 @@
         return;
       }
 
-      if (!setPasswordMatchState()) {
-        showError('Passwords do not match');
+      // Require confirmation on submit (even if HTML `required` is bypassed)
+      if (!setPasswordMatchState({ requireConfirmation: true })) {
+        showError(confirmPasswordInput.validationMessage || 'Please confirm your password');
         return;
       }
 

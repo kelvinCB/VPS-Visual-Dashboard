@@ -24,6 +24,14 @@ app.get('/register', (req, res) => {
     res.sendFile(path.join(__dirname, 'public', 'register.html'));
 });
 
+// Graceful degradation: if JS is disabled, the register form may submit.
+// This project is front-end only for registration (no real auth in this phase).
+app.post('/register', (req, res) => {
+    return res.status(501).send(
+        'Register is front-end only in this demo. Please enable JavaScript and use the UI flow.'
+    );
+});
+
 app.use(express.static(path.join(__dirname, 'public')));
 
 // ===== Optional API Auth (Bearer token)
