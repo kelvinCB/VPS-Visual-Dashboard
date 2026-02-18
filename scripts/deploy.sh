@@ -23,13 +23,14 @@ echo "[deploy] Installing production dependencies..."
 npm ci --omit=dev
 
 echo "[deploy] Restarting PM2 process..."
-# Try common process names first, fallback to restarting all.
+# Try common process names first
 if pm2 describe vps-dashboard >/dev/null 2>&1; then
   pm2 restart vps-dashboard
 elif pm2 describe vps-visual-dashboard >/dev/null 2>&1; then
   pm2 restart vps-visual-dashboard
 else
-  pm2 restart all
+  echo "[deploy] Process not found in PM2, starting it..."
+  pm2 start server.js --name vps-dashboard
 fi
 
 # Persist process list (in case it changed)

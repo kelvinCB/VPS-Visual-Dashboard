@@ -26,11 +26,11 @@ jobs:
           script_stop: true
           script: |
             set -euo pipefail
-            cd /root/VPS-Visual-Dashboard
+            cd /home/kelvin/.clawdbot/workspace/repos/VPS-Visual-Dashboard
 
             # Bootstrap: ensure the repo is up-to-date before referencing scripts in it.
             git fetch origin main --prune
             git reset --hard origin/main
 
             chmod +x scripts/deploy.sh
-            APP_DIR=/root/VPS-Visual-Dashboard BRANCH=main ./scripts/deploy.sh
+            APP_DIR=/home/kelvin/.clawdbot/workspace/repos/VPS-Visual-Dashboard BRANCH=main ./scripts/deploy.sh
