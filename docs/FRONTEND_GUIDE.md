@@ -18,10 +18,11 @@ Technical documentation for the VPS Dashboard frontend.
 
 ```
 public/
-├── index.html    # Main HTML page
-├── login.html    # Login Page (UI/UX prototype)
-├── styles.css    # All CSS styles
-└── app.js        # JavaScript application
+├── index.html     # Main HTML page
+├── login.html     # Login Page (UI/UX prototype)
+├── register.html  # Register Page (UI/UX prototype)
+├── styles.css     # All CSS styles
+└── app.js         # JavaScript application
 ```
 
 ## Technologies

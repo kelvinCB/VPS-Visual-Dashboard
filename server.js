@@ -15,9 +15,13 @@ const PORT = process.env.PORT || 7847;
 app.use(cors());
 app.use(express.json());
 
-// Explicit Login Route (before static/catch-all)
+// Explicit Auth Routes (before static/catch-all)
 app.get('/login', (req, res) => {
     res.sendFile(path.join(__dirname, 'public', 'login.html'));
+});
+
+app.get('/register', (req, res) => {
+    res.sendFile(path.join(__dirname, 'public', 'register.html'));
 });
 
 app.use(express.static(path.join(__dirname, 'public')));
