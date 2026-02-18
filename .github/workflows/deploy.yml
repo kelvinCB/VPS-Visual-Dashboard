@@ -26,11 +26,25 @@ jobs:
           script_stop: true
           script: |
             set -euo pipefail
-            cd /home/kelvin/.clawdbot/workspace/repos/VPS-Visual-Dashboard
+            
+            # Use specific app directory
+            TARGET_DIR="/home/kelvin/.clawdbot/workspace/repos/VPS-Visual-Dashboard"
+            
+            # Diagnostic
+            echo "[deploy] Current User: $(whoami)"
+            echo "[deploy] Target Directory: $TARGET_DIR"
+            
+            if [ ! -d "$TARGET_DIR" ]; then
+              echo "[error] Target directory $TARGET_DIR does not exist!"
+              exit 1
+            fi
+            
+            cd "$TARGET_DIR"
 
-            # Bootstrap: ensure the repo is up-to-date before referencing scripts in it.
+            # Reset and Pull
             git fetch origin main --prune
             git reset --hard origin/main
 
+            # Run deploy script
             chmod +x scripts/deploy.sh
-            APP_DIR=/home/kelvin/.clawdbot/workspace/repos/VPS-Visual-Dashboard BRANCH=main ./scripts/deploy.sh
+            APP_DIR="$TARGET_DIR" BRANCH=main ./scripts/deploy.sh
