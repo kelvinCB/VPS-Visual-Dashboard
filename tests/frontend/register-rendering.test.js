@@ -87,4 +87,20 @@ describe('Register Page Rendering', () => {
     expect(submitBtn.classList.contains('is-success')).toBe(true);
     expect(submitBtn.textContent.toLowerCase()).toContain('redirect');
   });
+
+  it('should block submit if confirmation is empty', () => {
+    const form = document.getElementById('register-form');
+    const submitBtn = document.getElementById('submit-btn');
+
+    document.getElementById('email').value = 'test@example.com';
+    document.getElementById('password').value = 'password123';
+    document.getElementById('confirmPassword').value = '';
+
+    form.dispatchEvent(new window.Event('submit', { bubbles: true, cancelable: true }));
+
+    const error = document.getElementById('error-msg');
+    expect(error.style.display).toBe('block');
+    expect(error.textContent.toLowerCase()).toMatch(/confirm/);
+    expect(submitBtn.disabled).toBe(false);
+  });
 });
