@@ -1106,13 +1106,21 @@ body.is-ready .metrics-grid .metric-card:nth-child(6) { transition-delay: 240ms;
 .form-input:focus {
   outline: none;
   border-color: var(--accent-primary);
+  /* Fallback for older browsers that don't support color-mix() */
+  box-shadow: 0 0 0 2px rgba(124, 58, 237, 0.2);
   box-shadow: 0 0 0 2px color-mix(in srgb, var(--accent-primary) 20%, transparent);
 }
 
 .form-input.is-invalid {
   border-color: var(--error);
+  /* Fallback for older browsers that don't support color-mix() */
+  box-shadow: 0 0 0 2px rgba(239, 68, 68, 0.18);
   box-shadow: 0 0 0 2px color-mix(in srgb, var(--error) 18%, transparent);
 }
+
+/* Register/Login helper hint states */
+.hint.is-match { color: var(--success); }
+.hint.is-mismatch { color: var(--error); }
 
 .btn-login {
   background: var(--accent-primary);

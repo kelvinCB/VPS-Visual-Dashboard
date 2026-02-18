@@ -34,6 +34,8 @@ describe('Register Page Rendering', () => {
   });
 
   afterEach(() => {
+    // Ensure timers are always restored even if a test fails mid-way
+    vi.useRealTimers();
     dom.window.close();
   });
 
@@ -78,6 +80,5 @@ describe('Register Page Rendering', () => {
     expect(submitBtn.classList.contains('is-loading')).toBe(true);
 
     vi.runAllTimers();
-    vi.useRealTimers();
   });
 });

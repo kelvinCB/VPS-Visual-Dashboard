@@ -81,7 +81,7 @@
         <p class="login-subtitle">VPS Dashboard access (front-end only)</p>
       </header>
 
-      <form class="login-form" id="register-form">
+      <form class="login-form" id="register-form" action="/login" method="GET">
         <div class="form-group">
           <label class="form-label" for="email">Email address</label>
           <input class="form-input" type="email" id="email" name="email" placeholder="name@company.com" required
@@ -161,6 +161,7 @@
 
       // Reset
       confirmPasswordInput.classList.remove('is-invalid');
+      passwordMatchHint.classList.remove('is-match', 'is-mismatch');
       passwordMatchHint.textContent = '';
 
       if (!confirmPassword) {
@@ -172,13 +173,13 @@
         confirmPasswordInput.classList.add('is-invalid');
         confirmPasswordInput.setCustomValidity('Passwords do not match');
         passwordMatchHint.textContent = 'Passwords do not match';
-        passwordMatchHint.style.color = 'var(--error)';
+        passwordMatchHint.classList.add('is-mismatch');
         return false;
       }
 
       confirmPasswordInput.setCustomValidity('');
       passwordMatchHint.textContent = 'Passwords match';
-      passwordMatchHint.style.color = 'var(--success)';
+      passwordMatchHint.classList.add('is-match');
       return true;
     }
 
