@@ -44,6 +44,22 @@
       text-align: center;
       display: none;
     }
+    .helper-link-container {
+      display: flex;
+      justify-content: flex-end;
+      margin-top: -10px;
+      margin-bottom: 10px;
+    }
+    .helper-link {
+      font-size: 0.8125rem;
+      color: var(--text-muted);
+      text-decoration: none;
+      transition: color var(--transition-fast);
+    }
+    .helper-link:hover {
+      color: var(--text-secondary);
+      text-decoration: underline;
+    }
   </style>
 </head>
 
@@ -52,8 +68,7 @@
     <div class="login-card">
       <header class="login-header">
         <img class="login-logo" src="/icons/icon.svg" alt="Taigels VPS" />
-        <h1 class="login-title">Welcome Back</h1>
-        <p class="login-subtitle">Sign in to your VPS Dashboard</p>
+        <h1 class="login-title">Sign in to your VPS Dashboard</h1>
       </header>
 
       <form class="login-form" id="login-form">
@@ -69,12 +84,16 @@
             required autocomplete="current-password" autocapitalize="off" spellcheck="false">
         </div>
 
+        <div class="helper-link-container">
+          <a href="/forgot-password" class="helper-link">Don't remember your password?</a>
+        </div>
+
         <button class="btn-login" type="submit" id="submit-btn" aria-live="polite">Sign In</button>
         <div id="error-msg" class="error-msg" aria-live="polite">Invalid email or password</div>
       </form>
 
       <footer class="login-footer">
-        <p>Don't have an account? <a href="mailto:admin@example.com" class="login-link">Contact Admin</a></p>
+        <p>Don't have an account? <a href="/register" class="login-link">Sign up</a></p>
       </footer>
     </div>
   </div>
@@ -112,8 +131,6 @@
       let redirectPath = params.get('redirect') || '/';
       
       // P1 Fix: Open Redirect Vulnerability
-      // Strict regex validation: only allow internal paths starting with / and containing safe chars.
-      // Prevents: //evil.com, /\evil.com, /%5C%5C, etc.
       const safePathRegex = /^\/[a-zA-Z0-9\-\._\/]*$/;
       if (!safePathRegex.test(redirectPath) || redirectPath.includes('//') || redirectPath.includes('\\')) {
         redirectPath = '/';
