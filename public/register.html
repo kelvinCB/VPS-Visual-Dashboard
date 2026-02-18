@@ -1,0 +1,246 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="description" content="Taigels VPS Dashboard - Register">
+  <meta name="theme-color" content="#7c3aed">
+  <title>Register - Taigels VPS Dashboard</title>
+  <link rel="icon" href="/icons/icon.svg" type="image/svg+xml">
+  <link rel="stylesheet" href="styles.css">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <style>
+    .btn-submit:disabled {
+      opacity: 0.7;
+      cursor: not-allowed;
+    }
+
+    .btn-submit.is-loading {
+      position: relative;
+      color: transparent !important;
+    }
+
+    .btn-submit.is-loading::after {
+      content: "";
+      position: absolute;
+      width: 20px;
+      height: 20px;
+      top: 50%;
+      left: 50%;
+      margin: -10px 0 0 -10px;
+      border: 3px solid rgba(255, 255, 255, 0.3);
+      border-radius: 50%;
+      border-top-color: #fff;
+      animation: spin 0.8s linear infinite;
+    }
+
+    .btn-submit.is-success {
+      background: var(--success);
+    }
+
+    @keyframes spin {
+      to {
+        transform: rotate(360deg);
+      }
+    }
+
+    .error-msg {
+      color: var(--error);
+      font-size: 0.875rem;
+      margin-top: 8px;
+      text-align: center;
+      display: none;
+    }
+
+    .hint {
+      font-size: 0.8125rem;
+      color: var(--text-muted);
+      margin-top: 6px;
+      line-height: 1.35;
+    }
+
+    .password-row {
+      display: grid;
+      grid-template-columns: 1fr;
+      gap: 16px;
+    }
+
+    @media (min-width: 520px) {
+      .password-row {
+        grid-template-columns: 1fr 1fr;
+      }
+    }
+  </style>
+</head>
+
+<body>
+  <div class="login-container">
+    <div class="login-card">
+      <header class="login-header">
+        <img class="login-logo" src="/icons/icon.svg" alt="Taigels VPS" />
+        <h1 class="login-title">Create your account</h1>
+        <p class="login-subtitle">VPS Dashboard access (front-end only)</p>
+      </header>
+
+      <form class="login-form" id="register-form" action="/register" method="POST">
+        <div class="form-group">
+          <label class="form-label" for="email">Email address</label>
+          <input class="form-input" type="email" id="email" name="email" placeholder="name@company.com" required
+            autofocus autocomplete="email" autocapitalize="off" spellcheck="false">
+        </div>
+
+        <div class="password-row">
+          <div class="form-group">
+            <label class="form-label" for="password">Password</label>
+            <input class="form-input" type="password" id="password" name="password" placeholder="••••••••" required
+              autocomplete="new-password" autocapitalize="off" spellcheck="false" minlength="8">
+            <p class="hint">Use at least 8 characters.</p>
+          </div>
+
+          <div class="form-group">
+            <label class="form-label" for="confirmPassword">Confirm password</label>
+            <input class="form-input" type="password" id="confirmPassword" name="confirmPassword"
+              placeholder="••••••••" required autocomplete="new-password" autocapitalize="off" spellcheck="false"
+              minlength="8">
+            <p class="hint" id="password-match-hint" aria-live="polite"></p>
+          </div>
+        </div>
+
+        <button class="btn-submit" type="submit" id="submit-btn" aria-live="polite">Create account</button>
+        <div id="error-msg" class="error-msg" aria-live="polite"></div>
+      </form>
+
+      <footer class="login-footer">
+        <p>Already have an account? <a href="/login" class="login-link">Sign in</a></p>
+      </footer>
+    </div>
+  </div>
+
+  <script>
+    // Initialize theme based on preference or system
+    const getSystemTheme = () => {
+      try {
+        if (typeof window !== 'undefined' && window.matchMedia) {
+          return window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
+        }
+      } catch (e) {}
+      return 'dark';
+    };
+
+    let savedTheme = null;
+    try {
+      savedTheme = localStorage.getItem('theme');
+    } catch (e) {
+      // Safari private mode / blocked storage can throw SecurityError/QuotaExceededError
+      savedTheme = null;
+    }
+
+    const resolvedTheme = savedTheme || getSystemTheme();
+    document.documentElement.dataset.theme = resolvedTheme === 'light' ? 'light' : 'purple';
+
+    const registerForm = document.getElementById('register-form');
+    const submitBtn = document.getElementById('submit-btn');
+    const errorMsg = document.getElementById('error-msg');
+    const emailInput = document.getElementById('email');
+    const passwordInput = document.getElementById('password');
+    const confirmPasswordInput = document.getElementById('confirmPassword');
+    const passwordMatchHint = document.getElementById('password-match-hint');
+
+    function showError(message) {
+      errorMsg.textContent = message;
+      errorMsg.style.display = 'block';
+    }
+
+    function clearError() {
+      errorMsg.textContent = '';
+      errorMsg.style.display = 'none';
+    }
+
+    function setPasswordMatchState() {
+      const password = passwordInput.value;
+      const confirmPassword = confirmPasswordInput.value;
+
+      // Reset
+      confirmPasswordInput.classList.remove('is-invalid');
+      passwordMatchHint.classList.remove('is-match', 'is-mismatch');
+      passwordMatchHint.textContent = '';
+
+      if (!confirmPassword) {
+        confirmPasswordInput.setCustomValidity('');
+        return true;
+      }
+
+      if (password !== confirmPassword) {
+        confirmPasswordInput.classList.add('is-invalid');
+        confirmPasswordInput.setCustomValidity('Passwords do not match');
+        passwordMatchHint.textContent = 'Passwords do not match';
+        passwordMatchHint.classList.add('is-mismatch');
+        return false;
+      }
+
+      confirmPasswordInput.setCustomValidity('');
+      passwordMatchHint.textContent = 'Passwords match';
+      passwordMatchHint.classList.add('is-match');
+      return true;
+    }
+
+    // Live validation (UX)
+    passwordInput.addEventListener('input', setPasswordMatchState);
+    confirmPasswordInput.addEventListener('input', setPasswordMatchState);
+    confirmPasswordInput.addEventListener('blur', setPasswordMatchState);
+
+    registerForm.addEventListener('submit', (e) => {
+      if (submitBtn.disabled) return;
+      e.preventDefault();
+      clearError();
+
+      const email = emailInput.value.trim();
+      const password = passwordInput.value;
+
+      if (!email) {
+        showError('Email is required');
+        return;
+      }
+
+      // P2: Use native type="email" validation
+      if (!emailInput.checkValidity()) {
+        showError('Please enter a valid email address');
+        return;
+      }
+
+      if (password.length < 8) {
+        showError('Password must be at least 8 characters');
+        return;
+      }
+
+      if (!setPasswordMatchState()) {
+        showError('Passwords do not match');
+        return;
+      }
+
+      submitBtn.disabled = true;
+      submitBtn.classList.add('is-loading');
+      submitBtn.setAttribute('aria-busy', 'true');
+      submitBtn.setAttribute('aria-label', 'Creating account...');
+
+      // Front-end only simulation (no API integration in this phase)
+      setTimeout(() => {
+        // Improve success perception before redirect
+        submitBtn.classList.remove('is-loading');
+        submitBtn.classList.add('is-success');
+        submitBtn.textContent = 'Account created! Redirecting…';
+        submitBtn.setAttribute('aria-label', 'Account created. Redirecting to login...');
+
+        // After success, send user to login with an optional redirect back home
+        setTimeout(() => {
+          window.location.href = '/login?redirect=/';
+        }, 350);
+      }, 800);
+    });
+  </script>
+</body>
+
+</html>

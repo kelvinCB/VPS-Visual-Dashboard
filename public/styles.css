@@ -11,12 +11,14 @@
   --text-muted: #6b6b7b;
 
   --accent-primary: #2563eb;
+  --accent-primary-rgb: 37, 99, 235;
   --accent-secondary: #06b6d4;
   --accent-gradient: linear-gradient(135deg, #2563eb 0%, #06b6d4 100%);
 
   --success: #22c55e;
   --warning: #f59e0b;
   --error: #ef4444;
+  --error-rgb: 239, 68, 68;
   --info: #3b82f6;
 
   --chart-line-1: #2563eb;
@@ -65,6 +67,7 @@
 [data-theme='purple'],
 :root[data-theme='purple'] {
   --accent-primary: #7c3aed;
+  --accent-primary-rgb: 124, 58, 237;
   --accent-secondary: #a855f7;
   --accent-gradient: linear-gradient(135deg, #7c3aed 0%, #a855f7 100%);
 }
@@ -1106,8 +1109,21 @@ body.is-ready .metrics-grid .metric-card:nth-child(6) { transition-delay: 240ms;
 .form-input:focus {
   outline: none;
   border-color: var(--accent-primary);
+  /* Fallback for older browsers that don't support color-mix() */
+  box-shadow: 0 0 0 2px rgba(var(--accent-primary-rgb), 0.2);
   box-shadow: 0 0 0 2px color-mix(in srgb, var(--accent-primary) 20%, transparent);
 }
+
+.form-input.is-invalid {
+  border-color: var(--error);
+  /* Fallback for older browsers that don't support color-mix() */
+  box-shadow: 0 0 0 2px rgba(var(--error-rgb), 0.18);
+  box-shadow: 0 0 0 2px color-mix(in srgb, var(--error) 18%, transparent);
+}
+
+/* Register/Login helper hint states */
+.hint.is-match { color: var(--success); }
+.hint.is-mismatch { color: var(--error); }
 
 .btn-login {
   background: var(--accent-primary);
