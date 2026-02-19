@@ -44,6 +44,7 @@ jobs:
 
             # Add safe directory to avoid ownership issues
             git config --global --add safe.directory "$TARGET_DIR" || true
+            git config --global --add safe.directory /home/kelvin/.openclaw/workspace/repos/VPS-Visual-Dashboard || true
 
             # Reset and Pull
             git fetch origin main --prune
