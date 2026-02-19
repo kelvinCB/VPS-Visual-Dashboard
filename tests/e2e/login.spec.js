@@ -7,7 +7,7 @@ test.describe('Login Page', () => {
 
   test('should display login page', async ({ page }) => {
     await expect(page).toHaveTitle(/Login/i);
-    await expect(page.locator('h1.login-title')).toHaveText(/Welcome Back/i);
+    await expect(page.locator('h1.login-title')).toHaveText('Sign in to your VPS Dashboard');
   });
 
   test('should show loading state and redirect on success', async ({ page }) => {

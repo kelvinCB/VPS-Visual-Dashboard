@@ -63,15 +63,9 @@
     }
 
     .password-row {
-      display: grid;
-      grid-template-columns: 1fr;
+      display: flex;
+      flex-direction: column;
       gap: 16px;
-    }
-
-    @media (min-width: 520px) {
-      .password-row {
-        grid-template-columns: 1fr 1fr;
-      }
     }
   </style>
 </head>
@@ -82,7 +76,6 @@
       <header class="login-header">
         <img class="login-logo" src="/icons/icon.svg" alt="Taigels VPS" />
         <h1 class="login-title">Create your account</h1>
-        <p class="login-subtitle">VPS Dashboard access (front-end only)</p>
       </header>
 
       <form class="login-form" id="register-form" action="/register" method="POST">
@@ -109,7 +102,7 @@
           </div>
         </div>
 
-        <button class="btn-submit" type="submit" id="submit-btn" aria-live="polite">Create account</button>
+        <button class="btn-primary btn-submit" type="submit" id="submit-btn" aria-live="polite">Create account</button>
         <div id="error-msg" class="error-msg" aria-live="polite"></div>
       </form>
 

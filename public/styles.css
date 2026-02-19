@@ -955,6 +955,9 @@ body {
 }
 
 .btn-primary {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
   background: var(--accent-primary);
   color: white;
   border: none;
@@ -965,8 +968,21 @@ body {
   transition: background 0.2s ease;
 }
 
+@media (prefers-reduced-motion: no-preference) {
+  .btn-primary {
+    transition: background 0.2s ease, box-shadow var(--transition-fast), transform var(--transition-fast);
+  }
+}
+
 .btn-primary:hover {
   background: var(--accent-secondary);
+}
+
+.btn-primary:focus-visible {
+  outline: none;
+  /* Fallback for older browsers that don't support color-mix() */
+  box-shadow: 0 0 0 3px rgba(var(--accent-primary-rgb), 0.25);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent-primary) 25%, transparent);
 }
 
 /* ===== Animations (Safe, CSS-only) ===== */
@@ -1082,6 +1098,11 @@ body.is-ready .metrics-grid .metric-card:nth-child(6) { transition-delay: 240ms;
   display: flex;
   flex-direction: column;
   gap: 20px;
+}
+
+.login-form .btn-primary {
+  width: 100%;
+  padding: 12px 16px;
 }
 
 .form-group {

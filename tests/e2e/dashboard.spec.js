@@ -9,13 +9,13 @@ test.describe('VPS Dashboard', () => {
     });
 
     test('should load dashboard page', async ({ page }) => {
-        await expect(page).toHaveTitle('Kelvin VPS Dashboard');
+        await expect(page).toHaveTitle('Taigels VPS Dashboard');
     });
 
     test('should display header with logo', async ({ page }) => {
         const logo = page.locator('.logo-text');
         await expect(logo).toBeVisible();
-        await expect(logo).toContainText('Kelvin VPS');
+        await expect(logo).toContainText('Taigels VPS Dashboard');
     });
 
     test('should show running status badge', async ({ page }) => {
@@ -46,11 +46,9 @@ test.describe('VPS Dashboard', () => {
     });
 
     test('should load system information', async ({ page }) => {
-        // Wait for API call to complete
-        await page.waitForTimeout(2000);
-
         const hostname = page.locator('#hostname');
-        await expect(hostname).not.toContainText('Loading...');
+        // Give the app time to fetch and render system info.
+        await expect(hostname).not.toContainText('Loading...', { timeout: 15000 });
     });
 
     test('should update metrics values after load', async ({ page }) => {

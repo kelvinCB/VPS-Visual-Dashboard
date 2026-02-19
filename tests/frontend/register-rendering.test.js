@@ -48,6 +48,21 @@ describe('Register Page Rendering', () => {
     expect(document.getElementById('submit-btn')).not.toBeNull();
   });
 
+  it('should use the primary button styling', () => {
+    const submitBtn = document.getElementById('submit-btn');
+    expect(submitBtn.classList.contains('btn-primary')).toBe(true);
+  });
+
+  it('should not render a subtitle on the register page', () => {
+    expect(document.querySelector('.login-subtitle')).toBeNull();
+  });
+
+  it('should stack password fields vertically', () => {
+    const styleTag = document.querySelector('style');
+    expect(styleTag).not.toBeNull();
+    expect(styleTag.textContent).toMatch(/\.password-row\s*\{[\s\S]*?display:\s*flex[\s\S]*?flex-direction:\s*column/);
+  });
+
   it('should validate password mismatch and show an error', () => {
     const form = document.getElementById('register-form');
     document.getElementById('email').value = 'test@example.com';
