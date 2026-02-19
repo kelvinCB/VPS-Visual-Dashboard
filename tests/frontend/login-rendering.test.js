@@ -41,17 +41,23 @@ describe('Login Page Rendering', () => {
         expect(document.getElementById('login-form')).not.toBeNull();
         expect(document.getElementById('email')).not.toBeNull();
         expect(document.getElementById('password')).not.toBeNull();
+        expect(document.getElementById('toggle-password')).not.toBeNull();
         expect(document.getElementById('submit-btn')).not.toBeNull();
     });
 
     it('should have correct attributes for security and accessibility', () => {
         const emailInput = document.getElementById('email');
         const passwordInput = document.getElementById('password');
+        const toggleBtn = document.getElementById('toggle-password');
 
         expect(emailInput.getAttribute('autocomplete')).toBe('email');
         expect(emailInput.getAttribute('name')).toBe('email');
         expect(passwordInput.getAttribute('autocomplete')).toBe('current-password');
         expect(passwordInput.getAttribute('name')).toBe('password');
+
+        // Toggle button
+        expect(toggleBtn.getAttribute('type')).toBe('button');
+        expect(toggleBtn.getAttribute('aria-label')?.toLowerCase()).toContain('show');
     });
 
     it('should show loading state on form submit', async () => {
@@ -69,6 +75,17 @@ describe('Login Page Rendering', () => {
 
         vi.runAllTimers();
         vi.useRealTimers();
+    });
+
+    it('should toggle password visibility', () => {
+        const passwordInput = document.getElementById('password');
+        const toggleBtn = document.getElementById('toggle-password');
+
+        expect(passwordInput.type).toBe('password');
+        toggleBtn.click();
+        expect(passwordInput.type).toBe('text');
+        toggleBtn.click();
+        expect(passwordInput.type).toBe('password');
     });
 
     it('should handle redirection with query parameters', async () => {

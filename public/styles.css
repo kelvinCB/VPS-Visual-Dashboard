@@ -1127,6 +1127,47 @@ body.is-ready .metrics-grid .metric-card:nth-child(6) { transition-delay: 240ms;
   transition: all var(--transition-fast);
 }
 
+/* Input + action button (e.g., show/hide password) */
+.input-with-action {
+  position: relative;
+}
+
+.input-with-action .form-input {
+  width: 100%;
+  padding-right: 64px;
+}
+
+.input-action {
+  position: absolute;
+  top: 50%;
+  right: 12px;
+  transform: translateY(-50%);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  height: 34px;
+  min-width: 44px;
+  padding: 0 10px;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 10px;
+  background: rgba(255, 255, 255, 0.04);
+  color: var(--text-secondary);
+  font-size: 0.875rem;
+  cursor: pointer;
+}
+
+.input-action:hover {
+  color: var(--text-primary);
+  border-color: rgba(255, 255, 255, 0.2);
+}
+
+.input-action:focus-visible {
+  outline: none;
+  /* Fallback for older browsers that don't support color-mix() */
+  box-shadow: 0 0 0 3px rgba(var(--accent-primary-rgb), 0.25);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent-primary) 25%, transparent);
+}
+
 .form-input:focus {
   outline: none;
   border-color: var(--accent-primary);

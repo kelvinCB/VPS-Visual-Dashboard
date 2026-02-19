@@ -80,8 +80,13 @@
 
         <div class="form-group">
           <label class="form-label" for="password">Password</label>
-          <input class="form-input" type="password" id="password" name="password" placeholder="••••••••" 
-            required autocomplete="current-password" autocapitalize="off" spellcheck="false">
+          <div class="input-with-action">
+            <input class="form-input" type="password" id="password" name="password" placeholder="••••••••" 
+              required autocomplete="current-password" autocapitalize="off" spellcheck="false">
+            <button class="input-action" type="button" id="toggle-password" aria-label="Show password" aria-pressed="false">
+              Show
+            </button>
+          </div>
         </div>
 
         <div class="helper-link-container">
@@ -115,6 +120,24 @@
     const loginForm = document.getElementById('login-form');
     const submitBtn = document.getElementById('submit-btn');
     const errorMsg = document.getElementById('error-msg');
+
+    // Hide/Unhide password
+    const passwordInput = document.getElementById('password');
+    const togglePasswordBtn = document.getElementById('toggle-password');
+
+    function setPasswordVisibility(isVisible) {
+      passwordInput.type = isVisible ? 'text' : 'password';
+      togglePasswordBtn.textContent = isVisible ? 'Hide' : 'Show';
+      togglePasswordBtn.setAttribute('aria-pressed', String(isVisible));
+      togglePasswordBtn.setAttribute('aria-label', isVisible ? 'Hide password' : 'Show password');
+    }
+
+    if (togglePasswordBtn && passwordInput) {
+      togglePasswordBtn.addEventListener('click', () => {
+        const isVisible = passwordInput.type === 'password';
+        setPasswordVisibility(isVisible);
+      });
+    }
 
     loginForm.addEventListener('submit', (e) => {
       if (submitBtn.disabled) return;

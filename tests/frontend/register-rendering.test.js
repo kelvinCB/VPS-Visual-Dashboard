@@ -44,7 +44,9 @@ describe('Register Page Rendering', () => {
     expect(document.getElementById('register-form')).not.toBeNull();
     expect(document.getElementById('email')).not.toBeNull();
     expect(document.getElementById('password')).not.toBeNull();
+    expect(document.getElementById('toggle-password')).not.toBeNull();
     expect(document.getElementById('confirmPassword')).not.toBeNull();
+    expect(document.getElementById('toggle-confirm-password')).not.toBeNull();
     expect(document.getElementById('submit-btn')).not.toBeNull();
   });
 
@@ -61,6 +63,25 @@ describe('Register Page Rendering', () => {
     const styleTag = document.querySelector('style');
     expect(styleTag).not.toBeNull();
     expect(styleTag.textContent).toMatch(/\.password-row\s*\{[\s\S]*?display:\s*flex[\s\S]*?flex-direction:\s*column/);
+  });
+
+  it('should toggle password visibility for both password fields', () => {
+    const passwordInput = document.getElementById('password');
+    const confirmPasswordInput = document.getElementById('confirmPassword');
+    const togglePasswordBtn = document.getElementById('toggle-password');
+    const toggleConfirmBtn = document.getElementById('toggle-confirm-password');
+
+    expect(passwordInput.type).toBe('password');
+    togglePasswordBtn.click();
+    expect(passwordInput.type).toBe('text');
+    togglePasswordBtn.click();
+    expect(passwordInput.type).toBe('password');
+
+    expect(confirmPasswordInput.type).toBe('password');
+    toggleConfirmBtn.click();
+    expect(confirmPasswordInput.type).toBe('text');
+    toggleConfirmBtn.click();
+    expect(confirmPasswordInput.type).toBe('password');
   });
 
   it('should validate password mismatch and show an error', () => {
