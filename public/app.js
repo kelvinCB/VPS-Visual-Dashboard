@@ -107,6 +107,7 @@ function openAppModal({
     if (appModalEls.modal) appModalEls.modal.setAttribute('data-variant', String(variant || 'info'));
 
     appModalEls.confirm.textContent = String(confirmText || 'OK');
+    appModalEls.confirm.disabled = false;
     appModalEls.cancel.textContent = String(cancelText || 'Cancel');
     appModalEls.cancel.style.display = showCancel ? 'inline-flex' : 'none';
 
