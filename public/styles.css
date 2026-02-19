@@ -965,7 +965,13 @@ body {
   border-radius: var(--border-radius-sm);
   font-weight: 600;
   cursor: pointer;
-  transition: background 0.2s ease, box-shadow var(--transition-fast), transform var(--transition-fast);
+  transition: background 0.2s ease;
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .btn-primary {
+    transition: background 0.2s ease, box-shadow var(--transition-fast), transform var(--transition-fast);
+  }
 }
 
 .btn-primary:hover {

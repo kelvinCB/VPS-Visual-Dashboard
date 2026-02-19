@@ -146,7 +146,13 @@ function initAppModal() {
         appModalEls.close.addEventListener('click', () => closeAppModal(false));
     }
 
-    appModalEls.confirm.addEventListener('click', () => closeAppModal(true));
+    appModalEls.confirm.addEventListener('click', () => {
+        // Prevent double-click / multiple resolves when a confirm action triggers async work.
+        // The action handler can re-enable the button later if needed.
+        if (appModalEls.confirm.disabled) return;
+        appModalEls.confirm.disabled = true;
+        closeAppModal(true);
+    });
     appModalEls.cancel.addEventListener('click', () => closeAppModal(false));
 
     document.addEventListener('keydown', (e) => {
