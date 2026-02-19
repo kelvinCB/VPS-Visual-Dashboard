@@ -1134,7 +1134,8 @@ body.is-ready .metrics-grid .metric-card:nth-child(6) { transition-delay: 240ms;
 
 .input-with-action .form-input {
   width: 100%;
-  padding-right: 64px;
+  /* Leave enough space for i18n button labels (e.g., longer translations) */
+  padding-right: 100px;
 }
 
 .input-action {
@@ -1167,6 +1168,28 @@ body.is-ready .metrics-grid .metric-card:nth-child(6) { transition-delay: 240ms;
   /* Fallback for older browsers that don't support color-mix() */
   box-shadow: 0 0 0 3px rgba(var(--accent-primary-rgb), 0.25);
   box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent-primary) 25%, transparent);
+}
+
+/* iOS Safari can show native right-side controls on password fields.
+   Avoid overlap between the native control and our custom toggle. */
+@supports (-webkit-touch-callout: none) {
+  /* Hide Safari's native autofill/credentials buttons where possible */
+  input.form-input::-webkit-credentials-auto-fill-button {
+    visibility: hidden;
+    display: none !important;
+    pointer-events: none;
+  }
+
+  input.form-input::-webkit-contacts-auto-fill-button {
+    visibility: hidden;
+    display: none !important;
+    pointer-events: none;
+  }
+
+  /* Keep our custom toggle slightly more inward as a fallback */
+  .input-action {
+    right: 44px;
+  }
 }
 
 .form-input:focus {
