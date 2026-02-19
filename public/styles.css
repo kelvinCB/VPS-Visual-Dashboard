@@ -1154,6 +1154,7 @@ body.is-ready .metrics-grid .metric-card:nth-child(6) { transition-delay: 240ms;
   color: var(--text-secondary);
   font-size: 0.875rem;
   cursor: pointer;
+  user-select: none;
 }
 
 .input-action:hover {

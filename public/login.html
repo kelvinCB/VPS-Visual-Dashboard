@@ -83,7 +83,7 @@
           <div class="input-with-action">
             <input class="form-input" type="password" id="password" name="password" placeholder="••••••••" 
               required autocomplete="current-password" autocapitalize="off" spellcheck="false">
-            <button class="input-action" type="button" id="toggle-password" aria-label="Show password" aria-pressed="false">
+            <button class="input-action" type="button" id="toggle-password" aria-label="Show password" aria-pressed="false" aria-controls="password">
               Show
             </button>
           </div>
@@ -137,6 +137,9 @@
         const isVisible = passwordInput.type === 'password';
         setPasswordVisibility(isVisible);
       });
+
+      // Security/UX: prevent bfcache restoring the page with password still visible
+      window.addEventListener('pageshow', () => setPasswordVisibility(false));
     }
 
     loginForm.addEventListener('submit', (e) => {
