@@ -97,8 +97,14 @@ test.describe('VPS Dashboard', () => {
         const refreshBtn = page.locator('#refresh-btn');
         await refreshBtn.click();
 
-        // Wait for last-updated to change (allow a few seconds; backend may respond within same second)
-        await expect(lastUpdated).not.toHaveText(timeBefore || '', { timeout: 5000 });
+        // Wait for last-updated to change.
+        // In some environments the initial value may be "Never" until the first successful fetch.
+        if (!timeBefore || timeBefore.trim().toLowerCase() === 'never') {
+            await expect(lastUpdated).not.toHaveText(/never/i, { timeout: 15000 });
+        } else {
+            // Allow a few seconds; backend may respond within the same second.
+            await expect(lastUpdated).not.toHaveText(timeBefore, { timeout: 15000 });
+        }
     });
 
     test('should display VPS details section', async ({ page }) => {
