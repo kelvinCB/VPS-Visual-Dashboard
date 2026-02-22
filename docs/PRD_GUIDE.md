@@ -41,6 +41,7 @@ VPS Visual Dashboard is a web-based monitoring tool that displays real-time syst
 - [ ] **Load Average** - 1, 5, 15 minute averages
 - [ ] **Swap Usage** - Separate swap monitoring
 - [ ] **Per-Core CPU** - Individual core usage
+- [ ] **Kill Process** - Kill a process by PID
 
 ### v1.2 - Alerts & Notifications
 
