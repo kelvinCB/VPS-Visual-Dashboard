@@ -22,7 +22,8 @@ const CONFIG = {
     },
     // Optional. Used only for sensitive endpoints.
     // Prefer server-injected config; allow localStorage override for convenience.
-    API_TOKEN: RUNTIME_CONFIG.API_TOKEN
+    API_TOKEN: RUNTIME_CONFIG.API_TOKEN,
+    SW_CACHE_NAME: 'kelvin-bpsc-v1' // Should match CACHE_NAME in sw.js
 };
 
 function getApiToken() {
@@ -209,6 +210,7 @@ const elements = {
     // Controls
     refreshBtn: document.getElementById('refresh-btn'),
     statusBadge: document.getElementById('status-badge'),
+    statusText: document.querySelector('#status-badge .status-text'),
     lastUpdated: document.getElementById('last-updated'),
 
     // Theme
@@ -507,6 +509,74 @@ function showError(message) {
     // Could add visual error indicator here
 }
 
+// ===== Service Worker Status =====
+let swStatusCache = null;
+let isCheckingSW = false;
+
+async function updateSWStatus() {
+    if (!elements.statusText || isCheckingSW) return;
+
+    if (!('serviceWorker' in navigator)) {
+        elements.statusText.textContent = 'Running';
+        elements.statusBadge.title = 'Dashboard is running without Service Worker support.';
+        return;
+    }
+    
+    // If we already confirmed cache is ready, we skip the heavy check.
+    // However, we allow re-checking periodically (every ~5 minutes) to handle cache eviction.
+    const now = Date.now();
+    if (swStatusCache && swStatusCache.status === 'cached' && (now - swStatusCache.ts < 300000)) {
+        return;
+    }
+
+    isCheckingSW = true;
+
+    try {
+        const registration = await navigator.serviceWorker.getRegistration();
+        
+        if (!registration) {
+            elements.statusText.textContent = 'Running';
+            elements.statusBadge.title = 'No Service Worker registered.';
+            swStatusCache = { status: 'none', ts: now };
+            return;
+        }
+
+        if (registration.installing || registration.waiting) {
+            const isWaiting = !!registration.waiting;
+            elements.statusText.textContent = isWaiting ? 'Update Ready' : 'Installing...';
+            elements.statusBadge.title = isWaiting 
+                ? 'A new version is ready. Refresh to update.' 
+                : 'Service Worker is installing updates.';
+            swStatusCache = { status: 'pending', ts: now };
+        } else if (registration.active) {
+            // Check for the specific app cache name defined in CONFIG
+            const hasAppCache = await caches.has(CONFIG.SW_CACHE_NAME);
+            
+            if (hasAppCache) {
+                elements.statusText.textContent = 'Offline Ready';
+                elements.statusBadge.title = 'Service Worker active. Dashboard is ready for offline use.';
+                swStatusCache = { status: 'cached', ts: now };
+            } else {
+                elements.statusText.textContent = 'Running';
+                elements.statusBadge.title = 'Service Worker active, but assets not yet cached.';
+                swStatusCache = { status: 'active-no-cache', ts: now };
+            }
+        } else {
+            // Fallback for unexpected states
+            elements.statusText.textContent = 'Running';
+            elements.statusBadge.title = 'Service Worker is in an unknown state.';
+            swStatusCache = { status: 'unknown', ts: now };
+        }
+    } catch (e) {
+        console.warn('[SW Status Check Failed]', e);
+        elements.statusText.textContent = 'Running';
+        elements.statusBadge.title = 'Status check failed: ' + e.message;
+        swStatusCache = null; // Force re-check on next attempt
+    } finally {
+        isCheckingSW = false;
+    }
+}
+
 // ===== Main Functions =====
 async function refreshData() {
     if (state.isLoading) return;
@@ -523,6 +593,9 @@ async function refreshData() {
         updateSystemInfoUI(systemInfo);
         updateLastUpdated();
         state.lastError = null;
+        
+        // Update SW status after data loads
+        updateSWStatus();
     } catch (error) {
         showError('Failed to fetch data');
     } finally {
@@ -1438,6 +1511,12 @@ document.addEventListener('DOMContentLoaded', () => {
     if ('serviceWorker' in navigator) {
         navigator.serviceWorker.register('/sw.js').catch(() => {
             // Ignore SW registration failures
+        });
+
+        // Invalidate status cache when the SW controller changes (e.g. update activation)
+        navigator.serviceWorker.addEventListener('controllerchange', () => {
+            swStatusCache = null;
+            updateSWStatus();
         });
     }
 
