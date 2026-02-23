@@ -209,6 +209,7 @@ const elements = {
     // Controls
     refreshBtn: document.getElementById('refresh-btn'),
     statusBadge: document.getElementById('status-badge'),
+    statusText: document.querySelector('#status-badge span:not(.status-dot)'),
     lastUpdated: document.getElementById('last-updated'),
 
     // Theme
@@ -507,6 +508,22 @@ function showError(message) {
     // Could add visual error indicator here
 }
 
+// ===== Service Worker Status =====
+async function updateSWStatus() {
+    if (!('serviceWorker' in navigator) || !elements.statusText) return;
+    
+    try {
+        const registration = await navigator.serviceWorker.getRegistration();
+        if (registration && registration.active) {
+            // If the PWA is active and assets are likely cached, show "Running (Cached)"
+            elements.statusText.textContent = 'Running (Cached)';
+            elements.statusBadge.title = 'Service Worker is active and assets are cached for offline use.';
+        }
+    } catch (e) {
+        // Fallback to default "Running" if SW check fails
+    }
+}
+
 // ===== Main Functions =====
 async function refreshData() {
     if (state.isLoading) return;
@@ -523,6 +540,9 @@ async function refreshData() {
         updateSystemInfoUI(systemInfo);
         updateLastUpdated();
         state.lastError = null;
+        
+        // Update SW status after data loads
+        updateSWStatus();
     } catch (error) {
         showError('Failed to fetch data');
     } finally {
