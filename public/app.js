@@ -22,7 +22,8 @@ const CONFIG = {
     },
     // Optional. Used only for sensitive endpoints.
     // Prefer server-injected config; allow localStorage override for convenience.
-    API_TOKEN: RUNTIME_CONFIG.API_TOKEN
+    API_TOKEN: RUNTIME_CONFIG.API_TOKEN,
+    SW_CACHE_NAME: 'kelvin-bpsc-v1' // Should match CACHE_NAME in sw.js
 };
 
 function getApiToken() {
@@ -534,9 +535,8 @@ async function updateSWStatus() {
         }
 
         if (registration.active) {
-            // Check for the specific app cache name defined in sw.js
-            const APP_CACHE_NAME = 'kelvin-bpsc-v1';
-            const hasAppCache = await caches.has(APP_CACHE_NAME);
+            // Check for the specific app cache name defined in CONFIG
+            const hasAppCache = await caches.has(CONFIG.SW_CACHE_NAME);
             
             if (hasAppCache) {
                 elements.statusText.textContent = 'Offline Ready';
@@ -1498,6 +1498,12 @@ document.addEventListener('DOMContentLoaded', () => {
     if ('serviceWorker' in navigator) {
         navigator.serviceWorker.register('/sw.js').catch(() => {
             // Ignore SW registration failures
+        });
+
+        // Invalidate status cache when the SW controller changes (e.g. update activation)
+        navigator.serviceWorker.addEventListener('controllerchange', () => {
+            swStatusCache = null;
+            updateSWStatus();
         });
     }
 
