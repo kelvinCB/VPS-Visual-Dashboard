@@ -530,6 +530,12 @@ async function updateSWStatus() {
                 elements.statusText.textContent = 'Running';
                 elements.statusBadge.title = 'Service Worker active, but assets not yet cached.';
             }
+        } else if (registration && (registration.installing || registration.waiting)) {
+            const isWaiting = !!registration.waiting;
+            elements.statusText.textContent = isWaiting ? 'Update Ready' : 'Installing...';
+            elements.statusBadge.title = isWaiting 
+                ? 'A new version is ready. Refresh to update.' 
+                : 'Service Worker is installing updates.';
         }
     } catch (e) {
         console.warn('[SW Status Check Failed]', e);
