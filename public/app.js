@@ -511,9 +511,10 @@ function showError(message) {
 
 // ===== Service Worker Status =====
 let swStatusCache = null;
+let isCheckingSW = false;
 
 async function updateSWStatus() {
-    if (!elements.statusText) return;
+    if (!elements.statusText || isCheckingSW) return;
 
     if (!('serviceWorker' in navigator)) {
         elements.statusText.textContent = 'Running';
@@ -521,8 +522,14 @@ async function updateSWStatus() {
         return;
     }
     
-    // If we already confirmed cache is ready, don't re-check every 25s unless state changes.
-    if (swStatusCache === 'cached') return;
+    // If we already confirmed cache is ready, we skip the heavy check.
+    // However, we allow re-checking periodically (every ~5 minutes) to handle cache eviction.
+    const now = Date.now();
+    if (swStatusCache && swStatusCache.status === 'cached' && (now - swStatusCache.ts < 300000)) {
+        return;
+    }
+
+    isCheckingSW = true;
 
     try {
         const registration = await navigator.serviceWorker.getRegistration();
@@ -530,37 +537,43 @@ async function updateSWStatus() {
         if (!registration) {
             elements.statusText.textContent = 'Running';
             elements.statusBadge.title = 'No Service Worker registered.';
-            swStatusCache = 'none';
+            swStatusCache = { status: 'none', ts: now };
             return;
         }
 
-        if (registration.active) {
-            // Check for the specific app cache name defined in CONFIG
-            const hasAppCache = await caches.has(CONFIG.SW_CACHE_NAME);
-            
-            if (hasAppCache) {
-                elements.statusText.textContent = 'Offline Ready';
-                elements.statusBadge.title = 'Service Worker active. Dashboard is ready for offline use.';
-                swStatusCache = 'cached';
-            } else {
-                elements.statusText.textContent = 'Running';
-                elements.statusBadge.title = 'Service Worker active, but assets not yet cached.';
-            }
-        } 
-        
         if (registration.installing || registration.waiting) {
             const isWaiting = !!registration.waiting;
             elements.statusText.textContent = isWaiting ? 'Update Ready' : 'Installing...';
             elements.statusBadge.title = isWaiting 
                 ? 'A new version is ready. Refresh to update.' 
                 : 'Service Worker is installing updates.';
-            // Allow re-check on next refresh to see if it becomes active
-            swStatusCache = 'pending';
+            swStatusCache = { status: 'pending', ts: now };
+        } else if (registration.active) {
+            // Check for the specific app cache name defined in CONFIG
+            const hasAppCache = await caches.has(CONFIG.SW_CACHE_NAME);
+            
+            if (hasAppCache) {
+                elements.statusText.textContent = 'Offline Ready';
+                elements.statusBadge.title = 'Service Worker active. Dashboard is ready for offline use.';
+                swStatusCache = { status: 'cached', ts: now };
+            } else {
+                elements.statusText.textContent = 'Running';
+                elements.statusBadge.title = 'Service Worker active, but assets not yet cached.';
+                swStatusCache = { status: 'active-no-cache', ts: now };
+            }
+        } else {
+            // Fallback for unexpected states
+            elements.statusText.textContent = 'Running';
+            elements.statusBadge.title = 'Service Worker is in an unknown state.';
+            swStatusCache = { status: 'unknown', ts: now };
         }
     } catch (e) {
         console.warn('[SW Status Check Failed]', e);
         elements.statusText.textContent = 'Running';
         elements.statusBadge.title = 'Status check failed: ' + e.message;
+        swStatusCache = null; // Force re-check on next attempt
+    } finally {
+        isCheckingSW = false;
     }
 }
 
