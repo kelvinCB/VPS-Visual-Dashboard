@@ -209,7 +209,6 @@ const elements = {
     // Controls
     refreshBtn: document.getElementById('refresh-btn'),
     statusBadge: document.getElementById('status-badge'),
-    statusText: document.querySelector('#status-badge .status-text'),
     lastUpdated: document.getElementById('last-updated'),
 
     // Theme
@@ -508,62 +507,6 @@ function showError(message) {
     // Could add visual error indicator here
 }
 
-// ===== Service Worker Status =====
-let swStatusCache = null;
-
-async function updateSWStatus() {
-    if (!elements.statusText) return;
-
-    if (!('serviceWorker' in navigator)) {
-        elements.statusText.textContent = 'Running';
-        elements.statusBadge.title = 'Dashboard is running without Service Worker support.';
-        return;
-    }
-    
-    // If we already confirmed cache is ready, don't re-check every 25s unless state changes.
-    if (swStatusCache === 'cached') return;
-
-    try {
-        const registration = await navigator.serviceWorker.getRegistration();
-        
-        if (!registration) {
-            elements.statusText.textContent = 'Running';
-            elements.statusBadge.title = 'No Service Worker registered.';
-            swStatusCache = 'none';
-            return;
-        }
-
-        if (registration.active) {
-            // Check for the specific app cache name defined in sw.js
-            const APP_CACHE_NAME = 'kelvin-bpsc-v1';
-            const hasAppCache = await caches.has(APP_CACHE_NAME);
-            
-            if (hasAppCache) {
-                elements.statusText.textContent = 'Offline Ready';
-                elements.statusBadge.title = 'Service Worker active. Dashboard is ready for offline use.';
-                swStatusCache = 'cached';
-            } else {
-                elements.statusText.textContent = 'Running';
-                elements.statusBadge.title = 'Service Worker active, but assets not yet cached.';
-            }
-        } 
-        
-        if (registration.installing || registration.waiting) {
-            const isWaiting = !!registration.waiting;
-            elements.statusText.textContent = isWaiting ? 'Update Ready' : 'Installing...';
-            elements.statusBadge.title = isWaiting 
-                ? 'A new version is ready. Refresh to update.' 
-                : 'Service Worker is installing updates.';
-            // Allow re-check on next refresh to see if it becomes active
-            swStatusCache = 'pending';
-        }
-    } catch (e) {
-        console.warn('[SW Status Check Failed]', e);
-        elements.statusText.textContent = 'Running';
-        elements.statusBadge.title = 'Status check failed: ' + e.message;
-    }
-}
-
 // ===== Main Functions =====
 async function refreshData() {
     if (state.isLoading) return;
@@ -580,9 +523,6 @@ async function refreshData() {
         updateSystemInfoUI(systemInfo);
         updateLastUpdated();
         state.lastError = null;
-        
-        // Update SW status after data loads
-        updateSWStatus();
     } catch (error) {
         showError('Failed to fetch data');
     } finally {
