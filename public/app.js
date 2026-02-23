@@ -209,7 +209,7 @@ const elements = {
     // Controls
     refreshBtn: document.getElementById('refresh-btn'),
     statusBadge: document.getElementById('status-badge'),
-    statusText: document.querySelector('#status-badge span:not(.status-dot)'),
+    statusText: document.querySelector('#status-badge .status-text'),
     lastUpdated: document.getElementById('last-updated'),
 
     // Theme
@@ -509,18 +509,30 @@ function showError(message) {
 }
 
 // ===== Service Worker Status =====
+let swStatusCache = null;
+
 async function updateSWStatus() {
     if (!('serviceWorker' in navigator) || !elements.statusText) return;
     
+    // If we already confirmed cache is ready, don't re-check every 25s.
+    if (swStatusCache === 'cached') return;
+
     try {
         const registration = await navigator.serviceWorker.getRegistration();
         if (registration && registration.active) {
-            // If the PWA is active and assets are likely cached, show "Running (Cached)"
-            elements.statusText.textContent = 'Running (Cached)';
-            elements.statusBadge.title = 'Service Worker is active and assets are cached for offline use.';
+            // Check if the Cache Storage actually has keys (meaning assets are cached)
+            const cacheKeys = await caches.keys();
+            if (cacheKeys.length > 0) {
+                elements.statusText.textContent = 'Offline Ready';
+                elements.statusBadge.title = 'Service Worker active. Dashboard is ready for offline use.';
+                swStatusCache = 'cached';
+            } else {
+                elements.statusText.textContent = 'Running';
+                elements.statusBadge.title = 'Service Worker active, but assets not yet cached.';
+            }
         }
     } catch (e) {
-        // Fallback to default "Running" if SW check fails
+        console.warn('[SW Status Check Failed]', e);
     }
 }
 
