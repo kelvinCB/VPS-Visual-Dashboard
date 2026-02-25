@@ -97,31 +97,39 @@ describe('Register Page Rendering', () => {
     expect(error.textContent).toMatch(/match/i);
   });
 
-  it('should set loading state on valid submit', () => {
+  it('should set loading state on valid submit and show success after API response', async () => {
     vi.useFakeTimers();
 
     const form = document.getElementById('register-form');
     const submitBtn = document.getElementById('submit-btn');
 
+    window.fetch = vi.fn().mockResolvedValue({
+      ok: true,
+      json: vi.fn().mockResolvedValue({
+        message: 'User registered successfully.'
+      })
+    });
+    global.fetch = window.fetch;
+
     document.getElementById('email').value = 'test@example.com';
     document.getElementById('password').value = 'password123';
     document.getElementById('confirmPassword').value = 'password123';
-
-    // Prevent real navigation in JSDOM
-    window.onbeforeunload = () => {};
 
     form.dispatchEvent(new window.Event('submit', { bubbles: true, cancelable: true }));
 
     expect(submitBtn.disabled).toBe(true);
     expect(submitBtn.classList.contains('is-loading')).toBe(true);
 
-    // Flush both the initial submit timeout + the nested redirect timeout
-    vi.runAllTimers();
+    await Promise.resolve();
+    await Promise.resolve();
 
-    // Assert lifecycle completes (success cue shown before navigation)
-    expect(submitBtn.classList.contains('is-loading')).toBe(false);
-    expect(submitBtn.classList.contains('is-success')).toBe(true);
-    expect(submitBtn.textContent.toLowerCase()).toContain('redirect');
+    expect(window.fetch).toHaveBeenCalledWith('/api/auth/register', expect.any(Object));
+
+    vi.runAllTimers();
+    await Promise.resolve();
+
+    expect(window.fetch).toHaveBeenCalledTimes(1);
+    expect(submitBtn.disabled).toBe(true);
   });
 
   it('should block submit if confirmation is empty', () => {

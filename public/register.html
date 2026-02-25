@@ -223,7 +223,12 @@
     confirmPasswordInput.addEventListener('input', () => setPasswordMatchState());
     confirmPasswordInput.addEventListener('blur', () => setPasswordMatchState());
 
-    registerForm.addEventListener('submit', (e) => {
+    const status = new URLSearchParams(window.location.search).get('status');
+    if (status === 'backend-not-configured') {
+      showError('Registration backend is not configured yet. Ask the admin to set DATABASE_URL.');
+    }
+
+    registerForm.addEventListener('submit', async (e) => {
       if (submitBtn.disabled) return;
       e.preventDefault();
       clearError();
@@ -258,19 +263,47 @@
       submitBtn.setAttribute('aria-busy', 'true');
       submitBtn.setAttribute('aria-label', 'Creating account...');
 
-      // Front-end only simulation (no API integration in this phase)
-      setTimeout(() => {
-        // Improve success perception before redirect
+      try {
+        const response = await fetch('/api/auth/register', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify({ email, password })
+        });
+
+        let payload = {};
+        try {
+          payload = await response.json();
+        } catch (jsonErr) {
+          payload = {};
+        }
+
+        if (!response.ok) {
+          showError(payload.error || 'Registration failed. Please try again.');
+          submitBtn.disabled = false;
+          submitBtn.classList.remove('is-loading');
+          submitBtn.removeAttribute('aria-busy');
+          submitBtn.setAttribute('aria-label', 'Create account');
+          return;
+        }
+
         submitBtn.classList.remove('is-loading');
         submitBtn.classList.add('is-success');
         submitBtn.textContent = 'Account created! Redirecting…';
         submitBtn.setAttribute('aria-label', 'Account created. Redirecting to login...');
 
-        // After success, send user to login with an optional redirect back home
         setTimeout(() => {
-          window.location.href = '/login?redirect=/';
+          const next = encodeURIComponent('/');
+          window.location.href = `/login?registered=1&email=${encodeURIComponent(email)}&redirect=${next}`;
         }, 350);
-      }, 800);
+      } catch (error) {
+        showError('Network error while creating account. Please try again.');
+        submitBtn.disabled = false;
+        submitBtn.classList.remove('is-loading');
+        submitBtn.removeAttribute('aria-busy');
+        submitBtn.setAttribute('aria-label', 'Create account');
+      }
     });
   </script>
 </body>

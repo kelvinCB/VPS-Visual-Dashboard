@@ -7,6 +7,8 @@ const si = require('systeminformation');
 const fs = require('fs');
 const cp = require('child_process');
 const net = require('net');
+const crypto = require('crypto');
+const { getDbPool } = require('./db');
 
 const app = express();
 const PORT = process.env.PORT || 7847;
@@ -14,6 +16,35 @@ const PORT = process.env.PORT || 7847;
 // Middleware
 app.use(cors());
 app.use(express.json());
+
+const USER_ROLE_DEFAULT = 'Player';
+let usersTableInitialized = false;
+
+function normalizeEmail(email) {
+    return String(email || '').trim().toLowerCase();
+}
+
+function hashPassword(password) {
+    const salt = crypto.randomBytes(16).toString('hex');
+    const derived = crypto.scryptSync(password, salt, 64).toString('hex');
+    return `scrypt:${salt}:${derived}`;
+}
+
+async function ensureUsersTable(pool) {
+    if (usersTableInitialized) return;
+
+    await pool.query(`
+        CREATE TABLE IF NOT EXISTS dashboard_users (
+            id BIGSERIAL PRIMARY KEY,
+            email TEXT NOT NULL UNIQUE,
+            password_hash TEXT NOT NULL,
+            role TEXT NOT NULL DEFAULT '${USER_ROLE_DEFAULT}',
+            created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+        )
+    `);
+
+    usersTableInitialized = true;
+}
 
 // Explicit Auth Routes (before static/catch-all)
 app.get('/login', (req, res) => {
@@ -28,12 +59,60 @@ app.get('/forgot-password', (req, res) => {
     res.sendFile(path.join(__dirname, 'public', 'forgot-password.html'));
 });
 
+app.post('/api/auth/register', async (req, res) => {
+    const email = normalizeEmail(req.body?.email);
+    const password = String(req.body?.password || '');
+
+    if (!email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+        return res.status(400).json({ error: 'Please provide a valid email address.' });
+    }
+
+    if (password.length < 8) {
+        return res.status(400).json({ error: 'Password must be at least 8 characters long.' });
+    }
+
+    const pool = req.app.locals.dbPool || getDbPool();
+    if (!pool) {
+        return res.status(503).json({
+            error: 'Registration backend is not configured. Set DATABASE_URL first.'
+        });
+    }
+
+    try {
+        await ensureUsersTable(pool);
+
+        const passwordHash = hashPassword(password);
+        const inserted = await pool.query(
+            `
+            INSERT INTO dashboard_users (email, password_hash, role)
+            VALUES ($1, $2, $3)
+            RETURNING id, email, role, created_at
+            `,
+            [email, passwordHash, USER_ROLE_DEFAULT]
+        );
+
+        return res.status(201).json({
+            message: 'User registered successfully.',
+            user: inserted.rows[0]
+        });
+    } catch (error) {
+        if (error?.code === '23505') {
+            return res.status(409).json({ error: 'An account with this email already exists.' });
+        }
+
+        console.error('Error registering user:', error);
+        return res.status(500).json({ error: 'Failed to register user.' });
+    }
+});
+
 // Graceful degradation: if JS is disabled, the register form may submit.
-// This project is front-end only for registration (no real auth in this phase).
-app.post('/register', (req, res) => {
-    return res.status(501).send(
-        'Register is front-end only in this demo. Please enable JavaScript and use the UI flow.'
-    );
+app.post('/register', async (req, res) => {
+    const pool = req.app.locals.dbPool || getDbPool();
+    if (!pool) {
+        return res.redirect(303, '/register?status=backend-not-configured');
+    }
+
+    return res.redirect(303, '/register?status=use-js-flow');
 });
 
 app.post('/forgot-password', (req, res) => {
