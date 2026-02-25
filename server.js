@@ -24,11 +24,21 @@ app.get('/register', (req, res) => {
     res.sendFile(path.join(__dirname, 'public', 'register.html'));
 });
 
+app.get('/forgot-password', (req, res) => {
+    res.sendFile(path.join(__dirname, 'public', 'forgot-password.html'));
+});
+
 // Graceful degradation: if JS is disabled, the register form may submit.
 // This project is front-end only for registration (no real auth in this phase).
 app.post('/register', (req, res) => {
     return res.status(501).send(
         'Register is front-end only in this demo. Please enable JavaScript and use the UI flow.'
+    );
+});
+
+app.post('/forgot-password', (req, res) => {
+    return res.status(501).send(
+        'Forgot password is front-end only in this demo. Please enable JavaScript and use the UI flow.'
     );
 });
 
