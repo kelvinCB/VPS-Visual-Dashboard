@@ -71,6 +71,12 @@ describe('Account Menu Dropdown', () => {
     });
 
     it('should log out when clicking "Sign Out"', async () => {
+        const reloadMock = vi.fn();
+        Object.defineProperty(window, 'location', {
+            configurable: true,
+            value: { reload: reloadMock }
+        });
+
         localStorage.setItem('apiToken', 'fake-token');
         document.dispatchEvent(new Event('DOMContentLoaded'));
         await new Promise(r => setTimeout(r, 50));
@@ -81,5 +87,6 @@ describe('Account Menu Dropdown', () => {
         expect(localStorage.getItem('apiToken')).toBeNull();
         const actionText = document.getElementById('auth-action-text');
         expect(actionText.textContent).toBe('Sign In');
+        expect(reloadMock).toHaveBeenCalled();
     });
 });

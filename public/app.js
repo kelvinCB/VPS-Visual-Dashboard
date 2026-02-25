@@ -222,7 +222,8 @@ const elements = {
     accountMenu: document.getElementById('account-menu'),
     authActionBtn: document.getElementById('auth-action-btn'),
     authActionText: document.getElementById('auth-action-text'),
-    authActionIcon: document.getElementById('auth-action-icon')
+    authActionIconSignin: document.getElementById('auth-action-icon-signin'),
+    authActionIconSignout: document.getElementById('auth-action-icon-signout')
 };
 
 // ===== Theme & Utilities =====
@@ -280,13 +281,19 @@ function updateAccountAuthState() {
     if (elements.authActionText) {
         elements.authActionText.textContent = isAuthenticated ? 'Sign Out' : 'Sign In';
     }
-    if (elements.authActionIcon) {
-        if (isAuthenticated) {
-            elements.authActionIcon.innerHTML = '<path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"></path><polyline points="16 17 21 12 16 7"></polyline><line x1="21" y1="12" x2="9" y2="12"></line>';
-        } else {
-            elements.authActionIcon.innerHTML = '<path d="M15 3h4a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-4"></path><polyline points="10 17 15 12 10 7"></polyline><line x1="15" y1="12" x2="3" y2="12"></line>';
-        }
+    if (elements.authActionIconSignin) {
+        elements.authActionIconSignin.style.display = isAuthenticated ? 'none' : 'block';
     }
+    if (elements.authActionIconSignout) {
+        elements.authActionIconSignout.style.display = isAuthenticated ? 'block' : 'none';
+    }
+}
+
+function closeAccountDropdown() {
+    if (!elements.accountBtn || !elements.accountMenu) return;
+    elements.accountBtn.setAttribute('aria-expanded', 'false');
+    elements.accountMenu.setAttribute('aria-hidden', 'true');
+    elements.accountMenu.classList.remove('active');
 }
 
 function initAccountDropdown() {
@@ -297,16 +304,32 @@ function initAccountDropdown() {
     elements.accountBtn.addEventListener('click', (e) => {
         e.stopPropagation();
         const isExpanded = elements.accountBtn.getAttribute('aria-expanded') === 'true';
-        elements.accountBtn.setAttribute('aria-expanded', !isExpanded);
-        elements.accountMenu.setAttribute('aria-hidden', isExpanded);
-        elements.accountMenu.classList.toggle('active', !isExpanded);
+        if (isExpanded) {
+            closeAccountDropdown();
+        } else {
+            elements.accountBtn.setAttribute('aria-expanded', 'true');
+            elements.accountMenu.setAttribute('aria-hidden', 'false');
+            elements.accountMenu.classList.add('active');
+
+            // Focus trap / accessibility: move focus to first item
+            if (elements.authActionBtn) {
+                elements.authActionBtn.focus();
+            }
+        }
     });
 
+    // Close when clicking outside
     document.addEventListener('click', (e) => {
         if (!elements.accountMenu.contains(e.target) && !elements.accountBtn.contains(e.target)) {
-            elements.accountBtn.setAttribute('aria-expanded', 'false');
-            elements.accountMenu.setAttribute('aria-hidden', 'true');
-            elements.accountMenu.classList.remove('active');
+            closeAccountDropdown();
+        }
+    });
+
+    // Handle Escape key
+    document.addEventListener('keydown', (e) => {
+        if (e.key === 'Escape' && elements.accountMenu.classList.contains('active')) {
+            closeAccountDropdown();
+            elements.accountBtn.focus();
         }
     });
 
@@ -320,6 +343,13 @@ function initAccountDropdown() {
                     localStorage.removeItem('apiToken');
                 } catch { }
                 updateAccountAuthState();
+
+                // UX/A11y: explicitly close the dropdown and return focus to the button
+                closeAccountDropdown();
+                elements.accountBtn.focus();
+
+                // Security Note: refresh the page to clear any sensitive data from memory/DOM
+                window.location.reload();
             }
             // If not authenticated, link goes to /login naturally
         });
