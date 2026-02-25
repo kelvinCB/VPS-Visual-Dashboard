@@ -1,28 +1,28 @@
 /**
- * Frontend Unit Tests - App Functions
+ * @vitest-environment jsdom
  */
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { JSDOM } from 'jsdom';
+import fs from 'fs';
+import path from 'path';
 
-// Setup DOM environment
-const dom = new JSDOM('<!DOCTYPE html><html><body></body></html>', {
-    url: 'http://localhost:7847'
+// Load the actual HTML to ensure tests are realistic and less brittle
+const html = fs.readFileSync(path.resolve(__dirname, '../../public/index.html'), 'utf8');
+
+beforeEach(() => {
+    document.documentElement.innerHTML = html;
 });
-global.document = dom.window.document;
-global.window = dom.window;
+
+const { CONFIG } = await import('../../public/app.js');
 
 describe('Configuration', () => {
     it('should have correct refresh intervals', () => {
-        const REFRESH_INTERVAL = 25000;
-        const DISK_REFRESH_INTERVAL = 150000;
-
-        expect(REFRESH_INTERVAL).toBe(25000);
-        expect(DISK_REFRESH_INTERVAL).toBe(150000);
+        expect(CONFIG.REFRESH_INTERVAL).toBe(20000);
+        expect(CONFIG.DISK_REFRESH_INTERVAL).toBe(150000);
     });
 
     it('should have correct chart history length', () => {
-        const CHART_HISTORY_LENGTH = 20;
-        expect(CHART_HISTORY_LENGTH).toBe(20);
+        expect(CONFIG.CHART_HISTORY_LENGTH).toBe(20);
     });
 });
 

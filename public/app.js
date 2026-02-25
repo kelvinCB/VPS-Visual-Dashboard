@@ -11,7 +11,7 @@ const RUNTIME_CONFIG = (typeof window !== 'undefined' && window.CONFIG && typeof
 
 const CONFIG = {
     API_BASE: '',
-    REFRESH_INTERVAL: 25000, // 25 seconds
+    REFRESH_INTERVAL: 20000, // 20 seconds
     DISK_REFRESH_INTERVAL: 150000, // 150 seconds (2.5 minutes)
     CHART_HISTORY_LENGTH: 20,
     CHART_COLORS: {
@@ -521,7 +521,7 @@ async function updateSWStatus() {
         elements.statusBadge.title = 'Dashboard is running without Service Worker support.';
         return;
     }
-    
+
     // If we already confirmed cache is ready, we skip the heavy check.
     // However, we allow re-checking periodically (every ~5 minutes) to handle cache eviction.
     const now = Date.now();
@@ -533,7 +533,7 @@ async function updateSWStatus() {
 
     try {
         const registration = await navigator.serviceWorker.getRegistration();
-        
+
         if (!registration) {
             elements.statusText.textContent = 'Running';
             elements.statusBadge.title = 'No Service Worker registered.';
@@ -544,14 +544,14 @@ async function updateSWStatus() {
         if (registration.installing || registration.waiting) {
             const isWaiting = !!registration.waiting;
             elements.statusText.textContent = isWaiting ? 'Update Ready' : 'Installing...';
-            elements.statusBadge.title = isWaiting 
-                ? 'A new version is ready. Refresh to update.' 
+            elements.statusBadge.title = isWaiting
+                ? 'A new version is ready. Refresh to update.'
                 : 'Service Worker is installing updates.';
             swStatusCache = { status: 'pending', ts: now };
         } else if (registration.active) {
             // Check for the specific app cache name defined in CONFIG
             const hasAppCache = await caches.has(CONFIG.SW_CACHE_NAME);
-            
+
             if (hasAppCache) {
                 elements.statusText.textContent = 'Offline Ready';
                 elements.statusBadge.title = 'Service Worker active. Dashboard is ready for offline use.';
@@ -593,7 +593,7 @@ async function refreshData() {
         updateSystemInfoUI(systemInfo);
         updateLastUpdated();
         state.lastError = null;
-        
+
         // Update SW status after data loads
         updateSWStatus();
     } catch (error) {
@@ -951,7 +951,7 @@ async function loadDiskBreakdown(mount = '/') {
         if (err?.name === 'AbortError') return;
         console.error(err);
         const msg = err?.message || 'Error scanning disk breakdown.';
-        
+
         if (diskModalElements.breakdownStatusText) {
             diskModalElements.breakdownStatusText.textContent = 'Error: ' + msg;
         } else {

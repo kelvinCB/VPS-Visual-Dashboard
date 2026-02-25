@@ -90,7 +90,7 @@ Charts are rendered using Canvas API with smooth bezier curves.
 
 ```javascript
 const CONFIG = {
-  REFRESH_INTERVAL: 25000,      // 25 seconds
+  REFRESH_INTERVAL: 20000,      // 20 seconds
   DISK_REFRESH_INTERVAL: 150000, // 150 seconds
   CHART_HISTORY_LENGTH: 20
 };
