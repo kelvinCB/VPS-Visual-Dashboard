@@ -115,6 +115,8 @@ body {
   background: var(--bg-card);
   border-radius: var(--border-radius);
   border: 1px solid var(--border-color);
+  position: relative;
+  z-index: 100;
 }
 
 .header-left {
@@ -543,7 +545,8 @@ body {
   left: 50%;
   transform: translate(-50%, -50%);
   display: flex;
-  align-items: baseline; gap: 2px;
+  align-items: baseline;
+  gap: 2px;
 }
 
 .disk-percentage span:first-child {
@@ -953,7 +956,8 @@ body {
 }
 
 .scan-dots {
-  display: inline-flex; gap: 2px;
+  display: inline-flex;
+  gap: 2px;
 }
 
 .scan-dots .dot {
@@ -961,13 +965,28 @@ body {
   animation: scanDotFade 1.2s infinite;
 }
 
-.scan-dots .dot1 { animation-delay: 0s; }
-.scan-dots .dot2 { animation-delay: 0.2s; }
-.scan-dots .dot3 { animation-delay: 0.4s; }
+.scan-dots .dot1 {
+  animation-delay: 0s;
+}
+
+.scan-dots .dot2 {
+  animation-delay: 0.2s;
+}
+
+.scan-dots .dot3 {
+  animation-delay: 0.4s;
+}
 
 @keyframes scanDotFade {
-  0%, 100% { opacity: 0.25; }
-  50% { opacity: 0.9; }
+
+  0%,
+  100% {
+    opacity: 0.25;
+  }
+
+  50% {
+    opacity: 0.9;
+  }
 }
 
 /* ===== Processes Table ===== */
@@ -1128,15 +1147,33 @@ body.is-ready .footer {
 }
 
 /* Stagger metric cards slightly for a "live" feel */
-body.is-ready .metrics-grid .metric-card:nth-child(1) { transition-delay: 40ms; }
-body.is-ready .metrics-grid .metric-card:nth-child(2) { transition-delay: 80ms; }
-body.is-ready .metrics-grid .metric-card:nth-child(3) { transition-delay: 120ms; }
-body.is-ready .metrics-grid .metric-card:nth-child(4) { transition-delay: 160ms; }
-body.is-ready .metrics-grid .metric-card:nth-child(5) { transition-delay: 200ms; }
-body.is-ready .metrics-grid .metric-card:nth-child(6) { transition-delay: 240ms; }
+body.is-ready .metrics-grid .metric-card:nth-child(1) {
+  transition-delay: 40ms;
+}
+
+body.is-ready .metrics-grid .metric-card:nth-child(2) {
+  transition-delay: 80ms;
+}
+
+body.is-ready .metrics-grid .metric-card:nth-child(3) {
+  transition-delay: 120ms;
+}
+
+body.is-ready .metrics-grid .metric-card:nth-child(4) {
+  transition-delay: 160ms;
+}
+
+body.is-ready .metrics-grid .metric-card:nth-child(5) {
+  transition-delay: 200ms;
+}
+
+body.is-ready .metrics-grid .metric-card:nth-child(6) {
+  transition-delay: 240ms;
+}
 
 /* Respect reduced-motion preferences */
 @media (prefers-reduced-motion: reduce) {
+
   *,
   *::before,
   *::after {
@@ -1183,12 +1220,21 @@ body.is-ready .metrics-grid .metric-card:nth-child(6) { transition-delay: 240ms;
 }
 
 @media (prefers-reduced-motion: no-preference) {
-  .login-card { animation: fadeIn 0.5s ease-out; }
+  .login-card {
+    animation: fadeIn 0.5s ease-out;
+  }
 }
 
 @keyframes fadeIn {
-  from { opacity: 0; transform: translateY(10px); }
-  to { opacity: 1; transform: translateY(0); }
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
 }
 
 .login-header {
@@ -1294,6 +1340,7 @@ body.is-ready .metrics-grid .metric-card:nth-child(6) { transition-delay: 240ms;
 /* iOS Safari can show native right-side controls on password fields.
    Avoid overlap between the native control and our custom toggle. */
 @supports (-webkit-touch-callout: none) {
+
   /* Hide Safari's native autofill/credentials buttons where possible */
   input.form-input::-webkit-credentials-auto-fill-button {
     visibility: hidden;
@@ -1329,8 +1376,13 @@ body.is-ready .metrics-grid .metric-card:nth-child(6) { transition-delay: 240ms;
 }
 
 /* Register/Login helper hint states */
-.hint.is-match { color: var(--success); }
-.hint.is-mismatch { color: var(--error); }
+.hint.is-match {
+  color: var(--success);
+}
+
+.hint.is-mismatch {
+  color: var(--error);
+}
 
 .btn-login {
   background: var(--accent-primary);
