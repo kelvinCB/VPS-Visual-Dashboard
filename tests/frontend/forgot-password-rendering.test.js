@@ -64,7 +64,7 @@ describe('Forgot Password Page Rendering', () => {
     expect(email.getAttribute('aria-invalid')).toBe('true');
   });
 
-  it('should show success feedback for valid email', () => {
+  it('should show success feedback for valid email', async () => {
     vi.useFakeTimers();
 
     const form = document.getElementById('forgot-form');
@@ -78,10 +78,12 @@ describe('Forgot Password Page Rendering', () => {
     expect(submitBtn.disabled).toBe(true);
     expect(submitBtn.classList.contains('is-loading')).toBe(true);
 
-    vi.runAllTimers();
+    await vi.runAllTimersAsync();
 
-    expect(submitBtn.disabled).toBe(false);
+    expect(submitBtn.disabled).toBe(true);
     expect(submitBtn.classList.contains('is-loading')).toBe(false);
+    expect(submitBtn.textContent.toLowerCase()).toContain('check your inbox');
+    expect(email.value).toBe('');
     expect(feedback.style.display).toBe('block');
     expect(feedback.classList.contains('success')).toBe(true);
     expect(feedback.textContent.toLowerCase()).toContain('reset link');

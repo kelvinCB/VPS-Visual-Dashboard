@@ -37,6 +37,8 @@ app.post('/register', (req, res) => {
 });
 
 app.post('/forgot-password', (req, res) => {
+    // TODO(security): when this route is backed by real email delivery,
+    // enforce rate limiting and CSRF protection before enabling live reset logic.
     return res.redirect(303, '/forgot-password?status=not-available');
 });
 

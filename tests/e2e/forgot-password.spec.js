@@ -13,7 +13,13 @@ test.describe('Forgot Password Page', () => {
 
   test('should show success feedback after submit', async ({ page }) => {
     await page.fill('#email', 'test@example.com');
+    const submitBtn = page.locator('#submit-btn');
+
     await page.click('#submit-btn');
+    await expect(submitBtn).toBeDisabled();
+    await expect(submitBtn).toHaveClass(/is-loading/);
+
     await expect(page.locator('#feedback-msg')).toContainText('reset link');
+    await expect(submitBtn).toHaveText(/check your inbox/i);
   });
 });
