@@ -11,6 +11,7 @@ A modern, real-time dashboard to monitor your VPS server metrics. Inspired by Ho
 - 📈 **Live Charts** - Smooth line and circular charts
 - 📱 **Responsive Design** - Works on desktop and mobile
 - 🔐 **Login Page** - UI/UX prototype for authentication
+- 🔑 **Forgot Password Page** - UI flow for account recovery request
 - ⚡ **Lightweight** - No heavy frameworks, vanilla JS
 
 ## Quick Start
