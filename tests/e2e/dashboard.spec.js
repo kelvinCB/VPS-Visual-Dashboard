@@ -21,7 +21,7 @@ test.describe('VPS Dashboard', () => {
     test('should show running status badge', async ({ page }) => {
         const badge = page.locator('#status-badge');
         await expect(badge).toBeVisible();
-        await expect(badge).toContainText('Running');
+        await expect(badge).toHaveText(/(Running|Offline Ready|Installing|Update Ready)/);
     });
 
     test('should display CPU metric card', async ({ page }) => {

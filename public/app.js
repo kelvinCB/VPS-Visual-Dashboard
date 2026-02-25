@@ -215,7 +215,14 @@ const elements = {
 
     // Theme
     themeToggle: document.getElementById('theme-toggle'),
-    themeLabel: document.getElementById('theme-label')
+    themeLabel: document.getElementById('theme-label'),
+
+    // Account Dropdown
+    accountBtn: document.getElementById('account-btn'),
+    accountMenu: document.getElementById('account-menu'),
+    authActionBtn: document.getElementById('auth-action-btn'),
+    authActionText: document.getElementById('auth-action-text'),
+    authActionIcon: document.getElementById('auth-action-icon')
 };
 
 // ===== Theme & Utilities =====
@@ -263,6 +270,58 @@ function initTheme() {
         elements.themeToggle.addEventListener('click', () => {
             const current = document.documentElement.dataset.theme || 'dark';
             applyTheme(current === 'light' ? 'dark' : 'light');
+        });
+    }
+}
+
+// ===== Account Dropdown =====
+function updateAccountAuthState() {
+    const isAuthenticated = !!getApiToken();
+    if (elements.authActionText) {
+        elements.authActionText.textContent = isAuthenticated ? 'Sign Out' : 'Sign In';
+    }
+    if (elements.authActionIcon) {
+        if (isAuthenticated) {
+            elements.authActionIcon.innerHTML = '<path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"></path><polyline points="16 17 21 12 16 7"></polyline><line x1="21" y1="12" x2="9" y2="12"></line>';
+        } else {
+            elements.authActionIcon.innerHTML = '<path d="M15 3h4a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-4"></path><polyline points="10 17 15 12 10 7"></polyline><line x1="15" y1="12" x2="3" y2="12"></line>';
+        }
+    }
+}
+
+function initAccountDropdown() {
+    if (!elements.accountBtn || !elements.accountMenu) return;
+
+    updateAccountAuthState();
+
+    elements.accountBtn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        const isExpanded = elements.accountBtn.getAttribute('aria-expanded') === 'true';
+        elements.accountBtn.setAttribute('aria-expanded', !isExpanded);
+        elements.accountMenu.setAttribute('aria-hidden', isExpanded);
+        elements.accountMenu.classList.toggle('active', !isExpanded);
+    });
+
+    document.addEventListener('click', (e) => {
+        if (!elements.accountMenu.contains(e.target) && !elements.accountBtn.contains(e.target)) {
+            elements.accountBtn.setAttribute('aria-expanded', 'false');
+            elements.accountMenu.setAttribute('aria-hidden', 'true');
+            elements.accountMenu.classList.remove('active');
+        }
+    });
+
+    if (elements.authActionBtn) {
+        elements.authActionBtn.addEventListener('click', (e) => {
+            const isAuthenticated = !!getApiToken();
+            if (isAuthenticated) {
+                e.preventDefault();
+                // Perform Sign out
+                try {
+                    localStorage.removeItem('apiToken');
+                } catch { }
+                updateAccountAuthState();
+            }
+            // If not authenticated, link goes to /login naturally
         });
     }
 }
@@ -1371,6 +1430,9 @@ function closeMemoryModal() {
 function init() {
     // Theme
     initTheme();
+
+    // Account Dropdown
+    initAccountDropdown();
 
     // App modal (custom alerts/confirmations)
     initAppModal();
