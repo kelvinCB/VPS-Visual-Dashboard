@@ -43,6 +43,11 @@ describe('Forgot Password Page Rendering', () => {
     expect(document.getElementById('email')).not.toBeNull();
     expect(document.getElementById('submit-btn')).not.toBeNull();
     expect(document.querySelector('a[href="/login"]')).not.toBeNull();
+
+    const email = document.getElementById('email');
+    const submitBtn = document.getElementById('submit-btn');
+    expect(email.getAttribute('aria-describedby')).toBe('feedback-msg');
+    expect(submitBtn.getAttribute('aria-live')).toBeNull();
   });
 
   it('should show error feedback for invalid email', () => {
@@ -56,6 +61,7 @@ describe('Forgot Password Page Rendering', () => {
     expect(feedback.style.display).toBe('block');
     expect(feedback.classList.contains('error')).toBe(true);
     expect(feedback.textContent.toLowerCase()).toContain('valid email');
+    expect(email.getAttribute('aria-invalid')).toBe('true');
   });
 
   it('should show success feedback for valid email', () => {
@@ -79,5 +85,24 @@ describe('Forgot Password Page Rendering', () => {
     expect(feedback.style.display).toBe('block');
     expect(feedback.classList.contains('success')).toBe(true);
     expect(feedback.textContent.toLowerCase()).toContain('reset link');
+    expect(email.getAttribute('aria-invalid')).toBe('false');
+  });
+
+  it('should show degraded-mode message when status query is set', () => {
+    const dom2 = new JSDOM(html, {
+      url: 'http://localhost/forgot-password?status=not-available',
+      runScripts: 'dangerously',
+      resources: 'usable'
+    });
+
+    const feedback = dom2.window.document.getElementById('feedback-msg');
+    const email = dom2.window.document.getElementById('email');
+
+    expect(feedback.style.display).toBe('block');
+    expect(feedback.classList.contains('error')).toBe(true);
+    expect(feedback.textContent.toLowerCase()).toContain('not available');
+    expect(email.getAttribute('aria-invalid')).toBe('true');
+
+    dom2.window.close();
   });
 });

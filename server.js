@@ -37,9 +37,7 @@ app.post('/register', (req, res) => {
 });
 
 app.post('/forgot-password', (req, res) => {
-    return res.status(501).send(
-        'Forgot password is front-end only in this demo. Please enable JavaScript and use the UI flow.'
-    );
+    return res.redirect(303, '/forgot-password?status=not-available');
 });
 
 app.use(express.static(path.join(__dirname, 'public')));
