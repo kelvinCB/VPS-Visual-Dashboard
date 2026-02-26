@@ -213,7 +213,13 @@ const elements = {
 
     // Theme
     themeToggle: document.getElementById('theme-toggle'),
-    themeLabel: document.getElementById('theme-label')
+    themeLabel: document.getElementById('theme-label'),
+
+    // Account menu
+    accountMenu: document.getElementById('account-menu'),
+    accountBtn: document.getElementById('account-btn'),
+    accountDropdown: document.getElementById('account-dropdown'),
+    profileLink: document.getElementById('profile-link')
 };
 
 // ===== Theme & Utilities =====
@@ -263,6 +269,55 @@ function initTheme() {
             applyTheme(current === 'light' ? 'dark' : 'light');
         });
     }
+}
+
+function closeAccountDropdown() {
+    if (!elements.accountDropdown || !elements.accountBtn) return;
+    elements.accountDropdown.classList.remove('active');
+    elements.accountDropdown.setAttribute('aria-hidden', 'true');
+    elements.accountBtn.setAttribute('aria-expanded', 'false');
+}
+
+function openAccountDropdown() {
+    if (!elements.accountDropdown || !elements.accountBtn) return;
+    elements.accountDropdown.classList.add('active');
+    elements.accountDropdown.setAttribute('aria-hidden', 'false');
+    elements.accountBtn.setAttribute('aria-expanded', 'true');
+}
+
+function initAccountMenu() {
+    if (!elements.accountBtn || !elements.accountDropdown || !elements.accountMenu) return;
+
+    elements.accountBtn.addEventListener('click', (e) => {
+        e.preventDefault();
+        const isOpen = elements.accountDropdown.classList.contains('active');
+        if (isOpen) {
+            closeAccountDropdown();
+        } else {
+            openAccountDropdown();
+        }
+    });
+
+    document.addEventListener('click', (e) => {
+        if (!elements.accountMenu.contains(e.target)) {
+            closeAccountDropdown();
+        }
+    });
+
+    document.addEventListener('keydown', (e) => {
+        if (e.key === 'Escape') closeAccountDropdown();
+    });
+
+    elements.profileLink?.addEventListener('click', async (e) => {
+        e.preventDefault();
+        closeAccountDropdown();
+        await appAlert({
+            title: 'My Profile',
+            message: 'Profile page coming soon. This menu option is now active in My Account.',
+            confirmText: 'OK',
+            variant: 'info'
+        });
+    });
 }
 
 // ===== API Functions =====
@@ -1298,6 +1353,9 @@ function closeMemoryModal() {
 function init() {
     // Theme
     initTheme();
+
+    // Account menu
+    initAccountMenu();
 
     // App modal (custom alerts/confirmations)
     initAppModal();

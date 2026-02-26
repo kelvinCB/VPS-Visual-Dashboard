@@ -1244,3 +1244,111 @@ body.is-ready .metrics-grid .metric-card:nth-child(6) { transition-delay: 240ms;
 .login-link:hover {
   text-decoration: underline;
 }
+
+/* ===== Account Menu ===== */
+.account-menu { position: relative; }
+
+.account-btn {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 14px;
+  background: var(--bg-secondary);
+  border: 1px solid var(--border-color);
+  border-radius: var(--border-radius-sm);
+  color: var(--text-primary);
+  cursor: pointer;
+  transition: all var(--transition-fast);
+  font-size: 0.875rem;
+  font-weight: 500;
+}
+
+.account-btn:hover {
+  background: var(--bg-card-hover);
+  border-color: var(--accent-primary);
+}
+
+.account-btn[aria-expanded="true"] {
+  border-color: var(--accent-primary);
+  background: var(--bg-card-hover);
+}
+
+.account-btn[aria-expanded="true"] .account-arrow {
+  transform: rotate(180deg);
+}
+
+.account-btn .account-icon {
+  width: 18px;
+  height: 18px;
+}
+
+.account-btn .account-text {
+  display: none;
+}
+
+@media (min-width: 640px) {
+  .account-btn .account-text {
+    display: inline;
+  }
+}
+
+.account-btn .account-arrow {
+  width: 16px;
+  height: 16px;
+  transition: transform var(--transition-fast);
+}
+
+.account-dropdown {
+  position: absolute;
+  top: calc(100% + 8px);
+  right: 0;
+  min-width: 220px;
+  background: var(--bg-card);
+  border: 1px solid var(--border-color);
+  border-radius: var(--border-radius);
+  box-shadow: var(--shadow-lg);
+  opacity: 0;
+  visibility: hidden;
+  transform: translateY(-8px);
+  transition: all var(--transition-normal);
+  z-index: 100;
+  padding: 8px 0;
+}
+
+.account-dropdown.active {
+  opacity: 1;
+  visibility: visible;
+  transform: translateY(0);
+}
+
+.dropdown-item {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 16px;
+  color: var(--text-primary);
+  text-decoration: none;
+  transition: all var(--transition-fast);
+  cursor: pointer;
+}
+
+.dropdown-item:hover {
+  background: var(--bg-card-hover);
+  color: var(--accent-primary);
+}
+
+.dropdown-item svg {
+  width: 18px;
+  height: 18px;
+  color: var(--text-secondary);
+  transition: color var(--transition-fast);
+}
+
+.dropdown-item:hover svg {
+  color: var(--accent-primary);
+}
+
+.dropdown-item span {
+  font-size: 0.9rem;
+  font-weight: 500;
+}
